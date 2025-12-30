@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mission Control 2026</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%236366f1'/><text x='50' y='58' font-size='42' fill='white' text-anchor='middle' font-family='Arial'>MC</text></svg>">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Mission Control 2026</p>
+        <h1>Fokus, Projekte & Fortschritt ohne AI</h1>
+        <p class="lede">Plane Projekte, logge Updates und teste Diagramme – bereit für Vercel und Supabase, wenn du so weit bist.</p>
+      </div>
+      <div class="top-actions">
+        <button class="ghost" id="themeToggle" aria-label="Theme umschalten">🌙</button>
+        <button class="secondary" id="quickLog">+ Update</button>
+        <button class="primary" id="quickProject">+ Projekt</button>
+      </div>
+    </header>
+
+    <section class="summary-grid" aria-label="Kennzahlen">
+      <article class="summary-card">
+        <div class="summary-label">Aktiv</div>
+        <div class="summary-value" id="metricActive">0</div>
+        <p class="summary-sub">Max. 3 gleichzeitige Projekte</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label">Geloggte Minuten</div>
+        <div class="summary-value" id="metricMinutes">0</div>
+        <p class="summary-sub">Summe aller Updates</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label">Letztes Update</div>
+        <div class="summary-value" id="metricLast">–</div>
+        <p class="summary-sub">Zeitpunkt & Projekt</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label">Queue</div>
+        <div class="summary-value" id="metricQueue">0</div>
+        <p class="summary-sub">Bereit zum Aktivieren</p>
+      </article>
+    </section>
+
+    <nav class="tabs" aria-label="Navigation">
+      <button class="tab active" data-view="focus">Fokus</button>
+      <button class="tab" data-view="queue">Queue</button>
+      <button class="tab" data-view="updates">Updates & Charts</button>
+    </nav>
+
+    <main class="views">
+      <section class="view active" id="focusView" aria-label="Aktive Projekte">
+        <div class="panel-header">
+          <div>
+            <h2>Aktive & pausierte Projekte</h2>
+            <p class="muted">Logge Fortschritt, pausiere oder schließe Projekte ab. Gatekeeper verhindert mehr als drei aktive Projekte.</p>
+          </div>
+          <span class="chip">Max. 3 aktiv</span>
+        </div>
+        <div id="focusList" class="card-grid"></div>
+      </section>
+
+      <section class="view" id="queueView" aria-label="Queue und neue Projekte">
+        <div class="panel-header">
+          <div>
+            <h2>Queue & neues Projekt</h2>
+            <p class="muted">Lege ein Projekt an und aktiviere es, sobald Kapazität frei ist.</p>
+          </div>
+          <button class="secondary" id="resetData">Seed laden</button>
+        </div>
+        <form id="projectForm" class="panel form-card">
+          <div class="field">
+            <label for="projectName">Projektname</label>
+            <input id="projectName" name="name" required placeholder="z.B. Website Redesign" />
+          </div>
+          <div class="field">
+            <label for="projectGoal">Ziel</label>
+            <input id="projectGoal" name="goal" placeholder="Was willst du erreichen?" />
+          </div>
+          <div class="form-actions">
+            <div class="muted small">Standardstatus: Queue</div>
+            <button class="primary" type="submit">Projekt anlegen</button>
+          </div>
+        </form>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Queued</h3>
+            <p class="muted">Aktiviere, sobald der Gatekeeper grünes Licht gibt.</p>
+          </div>
+          <div id="queueList" class="card-grid"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Abgeschlossen</h3>
+            <p class="muted">Archiv der fertigen Missionen.</p>
+          </div>
+          <div id="doneList" class="card-grid compact"></div>
+        </div>
+      </section>
+
+      <section class="view" id="updatesView" aria-label="Updates und Diagramme">
+        <div class="panel-header">
+          <div>
+            <h2>Updates & Diagramme testen</h2>
+            <p class="muted">Timeline, Balken & Heatmap zeigen, ob dein Fokus funktioniert.</p>
+          </div>
+          <button class="secondary" id="openLogFromUpdates">+ Update</button>
+        </div>
+        <div class="panel split">
+          <div class="timeline" id="timeline"></div>
+          <div class="charts">
+            <div class="chart-card">
+              <div class="panel-header">
+                <h3>Fokusverteilung</h3>
+                <p class="muted small">Balkenbreite = investierte Minuten pro Projekt.</p>
+              </div>
+              <div id="barChart" class="bar-chart"></div>
+            </div>
+            <div class="chart-card">
+              <div class="panel-header">
+                <h3>Letzte 14 Tage</h3>
+                <p class="muted small">Heatmap zeigt, wann Updates geschrieben wurden.</p>
+              </div>
+              <div id="heatmap" class="heatmap"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="logModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Update erfassen</p>
+          <h3 id="logTitle">Fortschritt loggen</h3>
+        </div>
+        <button class="ghost" id="closeModal" aria-label="Modal schließen">✕</button>
+      </div>
+      <form id="logForm" class="form-card">
+        <div class="field">
+          <label for="logProject">Projekt</label>
+          <select id="logProject" required></select>
+        </div>
+        <div class="field">
+          <label for="logMinutes">Minuten</label>
+          <input id="logMinutes" type="number" min="5" step="5" placeholder="z.B. 25" required />
+          <div class="chip-row">
+            <button type="button" class="chip" data-min="15">+15</button>
+            <button type="button" class="chip" data-min="25">+25</button>
+            <button type="button" class="chip" data-min="50">+50</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="logNote">Notiz</label>
+          <textarea id="logNote" rows="3" placeholder="Was hast du erledigt?"></textarea>
+        </div>
+        <div class="field">
+          <label for="logDate">Datum & Uhrzeit</label>
+          <input id="logDate" type="datetime-local" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="ghost" id="cancelLog">Abbrechen</button>
+          <button type="submit" class="primary">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

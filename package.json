@@ -1,0 +1,16 @@
+{
+  "name": "projects-2026",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mission Control 2026 - static dashboard for project planning and progress logging.",
+  "scripts": {
+    "dev": "python -m http.server 3000",
+    "start": "python -m http.server 3000",
+    "build": "echo \"Static build - nothing to compile\"",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

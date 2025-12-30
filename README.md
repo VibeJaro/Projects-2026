@@ -1,21 +1,41 @@
 # Projects-2026
 
-Mission Control 2026 ist ein mobiles, auf Vercel deploytes Dashboard, um 2026-Projekte zu planen, zu fokussieren und Fortschritt in Supabase zu speichern.
+Mission Control 2026 ist ein auf Vercel deploybares Dashboard, um Projekte zu planen, Updates zu loggen und Fortschritt ohne KI-Features sichtbar zu machen. Die App läuft vollständig im Browser (Local Storage) und ist Supabase-ready, sobald die Keys hinterlegt werden.
 
-## Funktionsübersicht (Design Draft)
-- **Navigation & Theming**: Untere Tab-Navigation mit den Bereichen Fokus (Today), Queue und Daten sowie ein Theme-Toggle (Light/Dark).
-- **Fokus-Ansicht**: Zeigt aktive/pausierte Projekte mit Status-Badges, Gesamtzeit, Ziel und Aktionen (Log erfassen, Pause/Fortsetzen, Abschließen).
-- **Queue-Ansicht**: Neue Projekte erstellen, aktivieren (Gatekeeper-Logik mit max. 3 aktiven Projekten), löschen oder Details öffnen.
-- **Projektdetails & Logbuch**: Projektname/Ziel bearbeiten, Gesamtinvestition anzeigen, chronologische Logs einsehen; von hier zurück zur Fokus-Ansicht navigieren.
-- **Fortschritts-Logging**: Modales Sheet mit Zeit-Selektor (±10 min, Quick-Chips), Notizfeld, Speichern und Abbruch.
-- **AI Report**: Modal „Mission Intelligence“ generiert einen zusammengefassten Statusbericht und bietet „Kopieren/Teilen“.
-- **Stats/Intelligence**: Heatmap der letzten 14 Tage, Balkenchart für Fokusverteilung (Top 5 Projekte), KI-Report-Trigger und DB-Reset-CTA.
-- **Gatekeeper**: Wenn 3 aktive Projekte erreicht sind, müssen Projekte pausiert oder abgeschlossen werden, bevor ein neues aktiviert wird.
-- **Data Layer (Supabase-ready)**: State für Projekte, Logs und Settings; unterstützt Create/Read/Update/Delete für Projekte, Logs und Settings sowie Theming-Persistenz.
+## Features (aktuelle Version ohne KI)
+- Tab-Navigation für **Fokus**, **Queue** und **Updates & Charts**
+- Light/Dark-Theme mit Persistenz
+- Gatekeeper: maximal **drei aktive Projekte** gleichzeitig
+- Projekt-CRUD (anlegen, aktivieren/pausieren/abschließen, löschen)
+- Update-Modal mit Quick-Chips (+15/+25/+50 Minuten) und optionaler Datumsangabe
+- Timeline, Balkendiagramm (Minuten pro Projekt) und 14-Tage-Heatmap
+- Seed-Daten zum schnellen Testen
 
-## Projektziele
-- Fokus-Management für maximal drei aktive Projekte gleichzeitig.
-- Transparente Fortschritts-Visualisierung (Heatmap + Balkencharts).
-- Schnelles Logging mit minimalen Klicks und KI-gestützter Zusammenfassung.
+## Schnellstart (lokal)
+1. Voraussetzungen: Node.js ≥ 18, Python (für den lokalen Static-Server).
+2. Abhängigkeiten sind nicht nötig. Optional kannst du den Lock synchronisieren:
+   ```bash
+   npm install --package-lock-only
+   ```
+3. Development-Server starten (Port 3000):
+   ```bash
+   npm run dev
+   ```
+4. Browser öffnen: http://localhost:3000
 
-Weitere Setup-Details findest du in der `instructions.md`.
+## Tests
+```bash
+npm test
+```
+Die Tests prüfen u.a. den Gatekeeper (max. 3 aktive Projekte), Log-Verhalten und die Heatmap-Generierung.
+
+## Vercel-Deployment
+- Framework: „Other“/static, Build Command: `npm run build` (nur Platzhalter), Output: Projektdir.
+- Falls du Supabase anbinden möchtest, nutze die Keys aus der `instructions.md` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` usw.).
+
+## Dateien
+- `index.html`: UI-Shell und Views
+- `styles.css`: Theme, Layout, Komponenten
+- `src/state.js`: Business-Logik, Gatekeeper, Heatmap-Berechnung
+- `src/persistence.js`: Local-Storage-Persistenz & Seed-Daten
+- `src/main.js`: DOM-Rendering und Event-Handling
