@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mission Control 2026</title>
+    <style>
+        :root {
+            /* Shared Dimensions & Colors */
+            --primary: #6366f1;
+            --accent: #06b6d4;
+            --danger: #ef4444;
+            --success: #10b981;
+            --border-radius: 16px;
+            --nav-height: 80px;
+
+            /* Dark Mode (Default) */
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-hover: #263346;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --nav-bg: rgba(15, 23, 42, 0.95);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --input-bg: #0f172a;
+            --input-border: #334155;
+            --dialog-backdrop: rgba(0, 0, 0, 0.85);
+            --heat-empty: #334155;
+            --bar-bg: #263346;
+            --chip-bg: #0f172a;
+            --chip-active: #1e293b;
+            --ai-box-bg: #0f172a;
+            --ai-box-border: rgba(99, 102, 241, 0.2);
+        }
+
+        [data-theme="light"] {
+            /* Light Mode Overrides */
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --card-hover: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary-glow: rgba(99, 102, 241, 0.2);
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #e2e8f0;
+            --input-bg: #f8fafc;
+            --input-border: #cbd5e1;
+            --dialog-backdrop: rgba(15, 23, 42, 0.4);
+            --heat-empty: #e2e8f0;
+            --bar-bg: #e2e8f0;
+            --chip-bg: #ffffff;
+            --chip-active: #e2e8f0;
+            --ai-box-bg: #f8fafc;
+            --ai-box-border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0; padding: 0;
+            padding-bottom: calc(var(--nav-height) + 20px);
+            height: 100vh; overflow-y: auto;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+        h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; }
+        h3 { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 0 0 15px 0; }
+        .text-sm { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+        .text-xs { font-size: 0.75rem; color: var(--text-muted); }
+        .font-mono { font-family: 'SF Mono', 'Roboto Mono', monospace; letter-spacing: -0.5px; }
+        .bold { font-weight: 600; color: var(--text-main); }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .w-full { width: 100%; }
+        .hidden { display: none !important; }
+
+        /* --- BUTTONS --- */
+        button {
+            border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+            padding: 14px 20px; border-radius: 12px; transition: all 0.2s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: white;
+        }
+        button:active { transform: scale(0.96); }
+        .btn-primary { background: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
+        .btn-secondary { background: var(--input-border); color: var(--text-main); }
+        .btn-ghost { background: transparent; color: var(--text-muted); padding: 8px; }
+        .btn-ai { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); }
+        .btn-sm { padding: 8px 12px; font-size: 0.8rem; }
+        .btn-icon-only { padding: 10px; width: 40px; height: 40px; border-radius: 50%; color: var(--text-main); background: var(--card-bg); border: 1px solid var(--border-color); }
+        
+        /* --- CARDS & UI --- */
+        .card {
+            background: var(--card-bg); border-radius: var(--border-radius);
+            padding: 24px; margin-bottom: 16px; border: 1px solid var(--border-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .status-badge {
+            font-size: 0.7rem; padding: 4px 10px; border-radius: 99px; 
+            text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;
+        }
+        .status-active { background: rgba(99, 102, 241, 0.15); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.3); }
+        .status-paused { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .status-queued { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+
+        /* --- CHARTS (CSS ONLY) --- */
+        .chart-filters { display: flex; gap: 8px; margin-bottom: 20px; background: var(--input-bg); padding: 4px; border-radius: 10px; display: inline-flex; border: 1px solid var(--border-color); }
+        .filter-chip { padding: 6px 12px; font-size: 0.75rem; color: var(--text-muted); border-radius: 8px; cursor: pointer; }
+        .filter-chip.active { background: var(--card-bg); color: var(--text-main); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        /* Bar Chart */
+        .bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 150px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+        .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+        .bar { width: 100%; background: var(--bar-bg); border-radius: 6px 6px 0 0; transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); min-height: 4px; position: relative; }
+        .bar.highlight { background: var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
+        .bar-label { font-size: 0.7rem; color: var(--text-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+        /* Heatmap */
+        .heatmap { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; margin-bottom: 10px; }
+        .heat-cell { aspect-ratio: 1; background: var(--heat-empty); border-radius: 4px; opacity: 0.5; }
+        .heat-cell.l1 { background: var(--primary); opacity: 0.4; }
+        .heat-cell.l2 { background: var(--primary); opacity: 0.7; }
+        .heat-cell.l3 { background: var(--primary); opacity: 1; box-shadow: 0 0 8px var(--primary-glow); }
+        .heat-legend { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 20px; }
+
+        /* Report Output */
+        .report-content {
+            background: var(--ai-box-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--ai-box-border);
+            font-family: 'SF Mono', monospace; font-size: 0.85rem; line-height: 1.7; color: var(--text-main);
+        }
+        .report-content strong { color: var(--primary); }
+        .report-content h4 { color: var(--text-main); margin: 15px 0 5px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+
+        /* --- NAV & INPUTS --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav-bg);
+            backdrop-filter: blur(12px); border-top: 1px solid var(--border-color); height: var(--nav-height);
+            display: flex; justify-content: space-around; padding-bottom: env(safe-area-inset-bottom); z-index: 100;
+        }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; color: var(--text-muted); font-size: 0.7rem; gap: 4px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 1.5rem; }
+
+        input, textarea { 
+            width: 100%; padding: 16px; background: var(--input-bg); border: 1px solid var(--input-border); 
+            border-radius: 12px; font-size: 1rem; color: var(--text-main); margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px var(--primary-glow); }
+
+        /* --- DIALOGS --- */
+        dialog { background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 20px; padding: 0; width: 90%; max-width: 500px; }
+        dialog::backdrop { background: var(--dialog-backdrop); backdrop-filter: blur(4px); }
+        .dialog-content { padding: 24px; }
+        
+        /* Time Picker */
+        .time-selector { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0; }
+        .time-display { font-size: 2.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .time-btn { width: 50px; height: 50px; border-radius: 50%; background: var(--input-border); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; color: var(--text-main); }
+        .quick-chips { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+        .chip { background: var(--chip-bg); border: 1px solid var(--input-border); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; }
+        .chip:active { background: var(--chip-active); }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="container" style="padding-bottom: 0;">
+        <div class="flex justify-between items-center" style="margin-bottom: 10px;">
+            <div>
+                <h1 id="page-title">Mission Control</h1>
+                <p id="page-subtitle" class="text-xs">System ready.</p>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn-icon-only" onclick="ui.toggleTheme()" aria-label="Toggle Theme">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <button id="add-btn" class="btn-primary btn-sm">+ Projekt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTENT -->
+    <div id="app-root" class="container"></div>
+
+    <!-- NAVIGATION -->
+    <nav class="bottom-nav">
+        <button class="nav-item" onclick="app.router('today')">
+            <span class="nav-icon">⚡</span>Fokus
+        </button>
+        <button class="nav-item" onclick="app.router('queue')">
+            <span class="nav-icon">📂</span>Queue
+        </button>
+        <button class="nav-item" onclick="app.router('stats')">
+            <span class="nav-icon">📊</span>Daten
+        </button>
+    </nav>
+
+    <!-- --- DIALOGS --- -->
+
+    <!-- LOG MODAL -->
+    <dialog id="modal-log">
+        <div class="dialog-content">
+            <h2>Fortschritt erfassen</h2>
+            <div class="time-selector">
+                <div class="time-btn" onclick="ui.adjTime(-10)">−</div>
+                <div class="time-display"><span id="log-mins">30</span><span style="font-size:1rem; margin-left:5px; color:var(--text-muted)">min</span></div>
+                <div class="time-btn" onclick="ui.adjTime(10)">+</div>
+            </div>
+            <div class="quick-chips">
+                <div class="chip" onclick="ui.setTime(20)">20m</div>
+                <div class="chip" onclick="ui.setTime(45)">45m</div>
+                <div class="chip" onclick="ui.setTime(60)">1h</div>
+                <div class="chip" onclick="ui.setTime(120)">2h</div>
+            </div>
+            <p class="text-sm text-muted">Ergebnis / Kontext für KI:</p>
+            <textarea id="log-note" rows="3" placeholder="z.B. Bugfix in Modul X..."></textarea>
+            <div class="flex gap-2">
+                <button class="btn-secondary w-full" onclick="ui.closeModal('modal-log')">Abbruch</button>
+                <button class="btn-primary w-full" onclick="app.saveLog()">Log</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- REPORT MODAL -->
+    <dialog id="modal-report">
+        <div class="dialog-content">
+            <h2>✨ Mission Intelligence</h2>
+            <p class="text-sm text-muted" style="margin-bottom:15px">KI-generierter Statusbericht.</p>
+            
+            <div id="ai-report-output" class="report-content">
+                Lade Analyse...
+            </div>
+            
+            <div class="flex gap-2" style="margin-top:20px">
+                <button class="btn-secondary w-full" onclick="ui.closeModal('modal-report')">Schließen</button>
+                <button class="btn-ghost" onclick="ui.shareReport()">Kopieren</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- CREATE PROJECT -->
+    <dialog id="modal-add">
+        <div class="dialog-content">
+            <h2>Neues Projekt</h2>
+            <p class="text-sm text-muted" style="margin-bottom:15px">Kommt in die Queue.</p>
+            <input type="text" id="new-name" placeholder="Projekt Name">
+            <input type="text" id="new-goal" placeholder="Ziel">
+            <div class="flex gap-2">
+                <button class="btn-secondary w-full" onclick="ui.closeModal('modal-add')">Abbruch</button>
+                <button class="btn-primary w-full" onclick="app.createProject()">Erstellen</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- GATEKEEPER -->
+    <dialog id="modal-gatekeeper">
+        <div class="dialog-content">
+            <h2 style="color:var(--danger)">⚠️ Fokus Limit (3/3)</h2>
+            <p class="text-sm" style="margin-bottom:20px">Du musst priorisieren. Was wird pausiert oder abgeschlossen?</p>
+            <div id="gk-list" class="flex-col gap-2"></div>
+            <button class="btn-secondary w-full" style="margin-top:20px" onclick="ui.closeModal('modal-gatekeeper')">Abbrechen</button>
+        </div>
+    </dialog>
+
+    <script>
+        // --- UTILS ---
+        const uuid = () => crypto.randomUUID().split('-')[0];
+        const now = () => Date.now();
+        const getEl = (id) => document.getElementById(id);
+        const fmtMins = (m) => {
+            const h = Math.floor(m / 60);
+            const min = m % 60;
+            return h > 0 ? `${h}h ${min}m` : `${min}m`;
+        };
+
+        // --- DATA LAYER (Supabase Ready) ---
+        const DB_KEY = 'gatekeeper_v3_data';
+        const db = {
+            state: { projects: [], logs: [], settings: { theme: 'dark' } },
+            async init() {
+                const s = localStorage.getItem(DB_KEY);
+                if(s) this.state = JSON.parse(s);
+                else this.seed();
+                
+                // Ensure settings object exists for older data
+                if(!this.state.settings) this.state.settings = { theme: 'dark' };
+            },
+            async save() { localStorage.setItem(DB_KEY, JSON.stringify(this.state)); },
+            
+            async getProjects() { return this.state.projects; },
+            async getLogs(pid=null) { 
+                let l = this.state.logs.sort((a,b) => b.createdAt - a.createdAt);
+                if(pid) l = l.filter(x => x.projectId === pid);
+                return l;
+            },
+            
+            async addProject(p) { this.state.projects.push(p); await this.save(); },
+            async updateProject(id, u) { 
+                const p = this.state.projects.find(x=>x.id===id); 
+                if(p) { Object.assign(p, u); p.updatedAt = now(); await this.save(); }
+            },
+            async deleteProject(id) { 
+                this.state.projects = this.state.projects.filter(x=>x.id!==id); await this.save(); 
+            },
+            async addLog(l) { this.state.logs.push(l); await this.save(); },
+            async updateSettings(s) { Object.assign(this.state.settings, s); await this.save(); },
+            
+            seed() {
+                this.state.projects = [
+                    { id: uuid(), name: "Gatekeeper V3", goal: "Charts integrieren", status: "active", createdAt: now() },
+                    { id: uuid(), name: "Marathon 2026", goal: "Training starten", status: "queued", createdAt: now() }
+                ];
+                // Fake Logs for charts
+                for(let i=0; i<10; i++) {
+                    this.state.logs.push({
+                        id: uuid(), projectId: this.state.projects[0].id,
+                        minutes: 30 + Math.floor(Math.random()*60),
+                        note: "Coding Session",
+                        createdAt: now() - (i * 86400000)
+                    });
+                }
+                this.save();
+            },
+            async reset() { localStorage.removeItem(DB_KEY); location.reload(); }
+        };
+
+        // --- APP ENGINE ---
+        const app = {
+            view: 'today',
+            logMinutes: 30,
+            
+            async init() {
+                await db.init();
+                getEl('add-btn').onclick = () => ui.openModal('modal-add');
+                ui.applyTheme(db.state.settings.theme); // Apply saved theme
+                this.router('today');
+            },
+
+            async router(view, id=null) {
+                this.view = view;
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                const map = {'today':0, 'queue':1, 'stats':2};
+                if(map[view]!==undefined) document.querySelectorAll('.nav-item')[map[view]].classList.add('active');
+
+                const root = getEl('app-root');
+                getEl('add-btn').classList.remove('hidden');
+                
+                if(view === 'today') await this.renderToday(root);
+                else if(view === 'queue') await this.renderQueue(root);
+                else if(view === 'stats') {
+                    getEl('add-btn').classList.add('hidden');
+                    await this.renderStats(root);
+                }
+                else if(view === 'project') {
+                    getEl('add-btn').classList.add('hidden');
+                    await this.renderProjectDetail(root, id);
+                }
+            },
+
+            // --- VIEWS ---
+
+            async renderToday(root) {
+                getEl('page-title').innerText = "Mission Control";
+                const projects = await db.getProjects();
+                const active = projects.filter(p => p.status === 'active' || p.status === 'paused');
+                const logs = await db.getLogs();
+
+                if(active.length === 0) {
+                    root.innerHTML = `<div style="text-align:center; margin-top:60px; color:var(--text-muted)">Keine aktiven Missionen.<br><br><button class="btn-secondary" onclick="app.router('queue')">Queue öffnen</button></div>`;
+                    return;
+                }
+
+                root.innerHTML = active.map(p => {
+                    const pLogs = logs.filter(l => l.projectId === p.id);
+                    const total = pLogs.reduce((a,b)=>a+b.minutes, 0);
+                    return `
+                    <div class="card" style="${p.status==='active'?'border-left:2px solid var(--primary)':''}">
+                        <div class="flex justify-between" style="margin-bottom:10px" onclick="app.router('project','${p.id}')">
+                            <span class="status-badge status-${p.status}">${p.status}</span>
+                            <span class="font-mono text-xs text-muted">${fmtMins(total)} Total</span>
+                        </div>
+                        <h2 onclick="app.router('project','${p.id}')">${p.name}</h2>
+                        <p class="text-sm text-muted" style="margin-bottom:15px">${p.goal}</p>
+                        <div class="flex gap-2">
+                            <button class="btn-primary w-full" onclick="app.openLog('${p.id}')">📝 Log</button>
+                            ${p.status === 'active' 
+                                ? `<button class="btn-ghost" onclick="app.setStatus('${p.id}','paused')">⏸</button>`
+                                : `<button class="btn-ghost" onclick="app.setStatus('${p.id}','active')">▶</button>`
+                            }
+                            <button class="btn-success" onclick="app.complete('${p.id}')">✓</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            },
+
+            async renderQueue(root) {
+                getEl('page-title').innerText = "Queue";
+                const projects = await db.getProjects();
+                const queued = projects.filter(p => p.status === 'queued');
+                
+                if(queued.length===0) { root.innerHTML = '<p class="text-center text-muted" style="margin-top:40px">Alles erledigt.</p>'; return; }
+
+                root.innerHTML = queued.map(p => `
+                    <div class="card">
+                        <div class="flex justify-between">
+                            <h3>${p.name}</h3>
+                            <button class="btn-ghost btn-sm" style="color:var(--danger)" onclick="app.deleteP('${p.id}')">✕</button>
+                        </div>
+                        <p class="text-sm text-muted" style="margin-bottom:15px">${p.goal}</p>
+                        <div class="flex gap-2">
+                            <button class="btn-secondary w-full" onclick="app.activate('${p.id}')">⬆ Aktivieren</button>
+                            <button class="btn-ghost w-full" onclick="app.router('project','${p.id}')">Details</button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            async renderStats(root) {
+                getEl('page-title').innerText = "Intelligence";
+                const logs = await db.getLogs();
+                const projects = await db.getProjects();
+                
+                // 1. Data Prep for Charts
+                const days = 14;
+                const heatmapData = Array(days).fill(0);
+                const projDistrib = {};
+                
+                logs.forEach(l => {
+                    // Heatmap (Last 14 days)
+                    const diff = Math.floor((now() - l.createdAt) / 86400000);
+                    if(diff < days && diff >= 0) heatmapData[days - 1 - diff] += l.minutes;
+                    
+                    // Distribution
+                    if(!projDistrib[l.projectId]) projDistrib[l.projectId] = 0;
+                    projDistrib[l.projectId] += l.minutes;
+                });
+
+                // 2. Build Heatmap HTML
+                const heatmapHTML = heatmapData.map(mins => {
+                    let cls = 'heat-cell';
+                    if(mins > 0) cls += ' l1';
+                    if(mins > 60) cls += ' l2';
+                    if(mins > 180) cls += ' l3';
+                    return `<div class="${cls}" title="${mins} min"></div>`;
+                }).join('');
+
+                // 3. Build Bar Chart HTML (Top 5 Projects)
+                const maxVal = Math.max(...Object.values(projDistrib), 1);
+                const barHTML = Object.entries(projDistrib)
+                    .sort((a,b) => b[1]-a[1]) // Sort desc
+                    .slice(0, 5) // Top 5
+                    .map(([pid, mins]) => {
+                        const p = projects.find(x=>x.id===pid);
+                        const h = Math.max((mins/maxVal)*100, 5); // min height 5%
+                        return `
+                        <div class="bar-group">
+                            <div class="bar ${mins>120?'highlight':''}" style="height:${h}%"></div>
+                            <div class="bar-label">${p?p.name.substring(0,8):'??'}</div>
+                        </div>`;
+                    }).join('');
+
+                // Render
+                root.innerHTML = `
+                    <div class="chart-filters">
+                        <div class="filter-chip active">14 Tage</div>
+                        <div class="filter-chip">30 Tage</div>
+                        <div class="filter-chip">Jahr</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Aktivitäts-Matrix</h3>
+                        <div class="heatmap">${heatmapHTML}</div>
+                        <div class="heat-legend">
+                            <span>14 Tage Rückblick</span>
+                            <span>Heute</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Fokus Verteilung</h3>
+                        <div class="bar-chart">${barHTML || '<div class="text-sm text-muted w-full text-center">Keine Daten</div>'}</div>
+                    </div>
+
+                    <div class="card" style="border: 1px solid var(--primary-glow); background: linear-gradient(180deg, rgba(99,102,241,0.05) 0%, rgba(15,23,42,0) 100%);">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 style="color:var(--primary); margin:0">Wochenreport</h3>
+                                <p class="text-xs text-muted">KI Zusammenfassung generieren</p>
+                            </div>
+                            <button class="btn-ai btn-sm" onclick="app.generateReport()">Generieren ✨</button>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center; margin-top:20px;">
+                        <button class="btn-ghost text-xs" onclick="db.reset()">Datenbank Reset</button>
+                    </div>
+                `;
+            },
+
+            async renderProjectDetail(root, pid) {
+                const projects = await db.getProjects();
+                const p = projects.find(x=>x.id===pid);
+                if(!p) return this.router('today');
+                
+                getEl('page-title').innerText = "Logbuch";
+                const logs = await db.getLogs(pid);
+                const total = logs.reduce((a,b)=>a+b.minutes,0);
+
+                root.innerHTML = `
+                    <div class="card">
+                        <label class="text-xs bold">Projekt Name</label>
+                        <input type="text" value="${p.name}" onchange="app.updateP('${pid}','name',this.value)">
+                        <label class="text-xs bold">Ziel</label>
+                        <input type="text" value="${p.goal}" onchange="app.updateP('${pid}','goal',this.value)">
+                        <div class="flex justify-between items-center" style="background:var(--input-bg); border:1px solid var(--input-border); padding:15px; border-radius:12px; margin-top:10px;">
+                            <span class="text-sm text-muted">Total Invested</span>
+                            <span class="font-mono bold" style="font-size:1.2rem">${fmtMins(total)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Verlauf</h3>
+                        ${logs.map(l => `
+                            <div style="border-left:2px solid var(--primary); padding-left:12px; margin-bottom:15px;">
+                                <div class="flex justify-between text-xs text-muted">
+                                    <span>${new Date(l.createdAt).toLocaleDateString()}</span>
+                                    <span class="font-mono">${fmtMins(l.minutes)}</span>
+                                </div>
+                                <div class="text-sm" style="margin-top:4px;">${l.note}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn-ghost w-full" onclick="window.history.back(); app.router('today')">Zurück</button>
+                `;
+            },
+
+            // --- REPORT ENGINE (MOCK LLM) ---
+            async generateReport() {
+                ui.openModal('modal-report');
+                const out = getEl('ai-report-output');
+                out.innerHTML = "Analysiere Telemetrie...";
+                
+                const projects = await db.getProjects();
+                const logs = await db.getLogs();
+                
+                // Simuliere Denken
+                setTimeout(() => {
+                    // Logic for "Smart" Text
+                    const active = projects.filter(p => p.status === 'active');
+                    const done = projects.filter(p => p.status === 'done');
+                    const queued = projects.filter(p => p.status === 'queued');
+                    const totalMins = logs.reduce((a,b)=>a+b.minutes, 0);
+                    
+                    const topProj = active.length > 0 ? active[0].name : "Kein Fokus";
+                    
+                    let html = `
+                        <h4>🚀 Status Report 2026</h4>
+                        <p><strong>Zusammenfassung:</strong> System läuft stabil. Insgesamt wurden bisher <strong>${fmtMins(totalMins)}</strong> investiert.</p>
+                        
+                        <h4>⚡ Aktiver Fokus</h4>
+                        ${active.length > 0 
+                            ? `<p>Der Hauptfokus liegt auf <strong>${topProj}</strong>. Halte die Dynamik aufrecht.</p>` 
+                            : `<p>⚠️ Keine aktiven Projekte. Wähle eine neue Mission aus der Queue.</p>`}
+                        
+                        <h4>📈 Fortschritt</h4>
+                        <p>${done.length} Missionen abgeschlossen. ${queued.length} warten im Backlog.</p>
+                        
+                        <h4>🤖 KI Empfehlung</h4>
+                        <ul style="margin:0; padding-left:20px; color:var(--text-muted)">
+                            <li>Priorisiere Abschluss vor Neustart.</li>
+                            ${queued.length > 0 ? `<li>Nächster Kandidat: <strong>${queued[0].name}</strong> vorbereiten.</li>` : '<li>Queue ist leer. Suche neue Ziele.</li>'}
+                            <li>Vergiss nicht, Log-Einträge detailliert zu schreiben.</li>
+                        </ul>
+                    `;
+                    out.innerHTML = html;
+                }, 1500);
+            },
+
+            // --- ACTIONS ---
+            async saveLog() {
+                const note = getEl('log-note').value || "Quick Log";
+                await db.addLog({ id: uuid(), projectId: this.logPid, minutes: this.logMinutes, note, createdAt: now() });
+                ui.closeModal('modal-log');
+                if(this.view==='today') this.renderToday(getEl('app-root'));
+            },
+            async createProject() {
+                const name = getEl('new-name').value;
+                if(!name) return;
+                await db.addProject({ id: uuid(), name, goal: getEl('new-goal').value, status: 'queued', createdAt: now() });
+                ui.closeModal('modal-add');
+                getEl('new-name').value='';
+                if(this.view==='queue') this.renderQueue(getEl('app-root'));
+            },
+            async activate(id) {
+                const all = await db.getProjects();
+                const active = all.filter(p => p.status==='active'||p.status==='paused');
+                if(active.length < 3) {
+                    await this.setStatus(id, 'active');
+                    this.router('today');
+                } else {
+                    this.gkId = id;
+                    getEl('gk-list').innerHTML = active.map(p => `
+                        <div class="card" style="padding:10px; margin-bottom:5px; display:flex; justify-content:space-between">
+                            <span class="text-sm bold">${p.name}</span>
+                            <div class="flex gap-2"><button class="btn-ghost btn-sm" onclick="app.swap('${p.id}','paused')">Pause</button><button class="btn-success btn-sm" onclick="app.swap('${p.id}','done')">Done</button></div>
+                        </div>`).join('');
+                    ui.openModal('modal-gatekeeper');
+                }
+            },
+            async swap(oldId, action) {
+                if(action==='paused') await db.updateProject(oldId, { status: 'queued' }); // Free slot
+                else await this.complete(oldId);
+                
+                await db.updateProject(this.gkId, { status: 'active' });
+                ui.closeModal('modal-gatekeeper');
+                this.router('today');
+            },
+            async complete(id) {
+                const note = prompt("Ergebnis:");
+                if(note) { await db.updateProject(id, {status:'done'}); await db.addLog({id:uuid(), projectId:id, minutes:0, note:`🏁 DONE: ${note}`, createdAt:now()}); this.router('today'); }
+            },
+            async setStatus(id, s) { await db.updateProject(id, {status:s}); this.router('today'); },
+            async updateP(id, f, v) { await db.updateProject(id, {[f]:v}); },
+            async deleteP(id) { if(confirm("Löschen?")) { await db.deleteProject(id); this.renderQueue(getEl('app-root')); } },
+            
+            openLog(id) { this.logPid = id; this.logMinutes=30; getEl('log-mins').innerText=30; getEl('log-note').value=''; ui.openModal('modal-log'); }
+        };
+
+        const ui = {
+            openModal(id) { getEl(id).showModal(); },
+            closeModal(id) { getEl(id).close(); },
+            adjTime(d) { app.logMinutes = Math.max(10, app.logMinutes+d); getEl('log-mins').innerText=app.logMinutes; },
+            setTime(m) { app.logMinutes = m; getEl('log-mins').innerText=m; },
+            shareReport() { navigator.clipboard.writeText(getEl('ai-report-output').innerText); alert("Kopiert!"); },
+            
+            // THEME LOGIC
+            toggleTheme() {
+                const current = db.state.settings.theme;
+                const next = current === 'dark' ? 'light' : 'dark';
+                this.applyTheme(next);
+                db.updateSettings({ theme: next });
+            },
+            applyTheme(t) {
+                const root = document.documentElement;
+                const icon = getEl('theme-icon');
+                if(t === 'light') {
+                    root.setAttribute('data-theme', 'light');
+                    icon.innerText = '☀️';
+                } else {
+                    root.removeAttribute('data-theme');
+                    icon.innerText = '🌙';
+                }
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
