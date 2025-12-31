@@ -1,96 +1,193 @@
-import { cloneState, getDefaultState } from "./state.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getDefaultState } from "./state.js";
 
-const STORAGE_KEY = "projects-2026-state";
-
-const hasLocalStorage = () => {
-  try {
-    return typeof localStorage !== "undefined";
-  } catch {
-    return false;
+const readEnv = (key) => {
+  if (typeof window !== "undefined") {
+    if (window.ENV?.[key]) return window.ENV[key];
+    if (window[key]) return window[key];
+    const meta = document.querySelector(`meta[name="${key}"]`);
+    if (meta?.content) return meta.content;
   }
+  if (typeof globalThis !== "undefined" && globalThis.process?.env?.[key]) {
+    return globalThis.process.env[key];
+  }
+  return null;
 };
 
-const seedData = () => {
+const SUPABASE_URL = readEnv("NEXT_PUBLIC_SUPABASE_URL");
+const SUPABASE_ANON_KEY = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+export const isSupabaseConfigured = Boolean(supabase);
+
+const mapProjectRow = (row) => ({
+  id: row.id,
+  name: row.name,
+  goal: row.goal ?? "",
+  status: row.status,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapLogRow = (row) => ({
+  id: row.id,
+  projectId: row.project_id,
+  minutes: row.minutes,
+  note: row.note ?? "",
+  createdAt: row.created_at,
+});
+
+const mapSettingsRow = (row) => ({
+  id: row.id ?? null,
+  userId: row.user_id ?? null,
+  theme: row.theme ?? "dark",
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const fetchProjects = async () => {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id,name,goal,status,created_at,updated_at")
+    .order("created_at", { ascending: false });
+  return { data: data?.map(mapProjectRow) ?? [], error };
+};
+
+const fetchLogs = async () => {
+  const { data, error } = await supabase
+    .from("logs")
+    .select("id,project_id,minutes,note,created_at")
+    .order("created_at", { ascending: false });
+  return { data: data?.map(mapLogRow) ?? [], error };
+};
+
+const fetchSettings = async () => {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("id,user_id,theme,created_at,updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return { error };
+  if (!data) return { data: null };
+  return { data: mapSettingsRow(data) };
+};
+
+const combineErrors = (responses) => {
+  const firstError = responses.find((res) => res?.error)?.error;
+  if (!firstError) return null;
+  return typeof firstError === "string" ? firstError : firstError.message ?? "Unbekannter Fehler.";
+};
+
+export async function loadState() {
   const base = getDefaultState();
-  const now = new Date();
-  const projectIds = {
-    mission: "mission-alpha",
-    training: "training-hours",
-    launch: "launch-prep",
+  if (!supabase) {
+    return { state: base, error: "Supabase ist nicht konfiguriert. Setze NEXT_PUBLIC_SUPABASE_URL und NEXT_PUBLIC_SUPABASE_ANON_KEY." };
+  }
+
+  const [projectsRes, logsRes, settingsRes] = await Promise.all([fetchProjects(), fetchLogs(), fetchSettings()]);
+  const error = combineErrors([projectsRes, logsRes, settingsRes]);
+
+  if (error) {
+    return { state: base, error };
+  }
+
+  const settings = settingsRes.data ?? base.settings;
+
+  return {
+    state: {
+      projects: projectsRes.data,
+      logs: logsRes.data,
+      settings,
+    },
+    error: null,
   };
+}
 
-  base.projects = [
-    {
-      id: projectIds.mission,
-      name: "Mission Alpha",
-      goal: "Release MVP und Nutzer onboarden",
-      status: "active",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-    {
-      id: projectIds.training,
-      name: "Training & Fokus",
-      goal: "2h Deep Work pro Tag",
-      status: "active",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-    {
-      id: projectIds.launch,
-      name: "Launch Prep",
-      goal: "Marketing Assets finalisieren",
-      status: "paused",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-  ];
-
-  const today = new Date();
-  const makeDate = (offset) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - offset);
-    return d.toISOString();
-  };
-
-  base.logs = [
-    { id: "log-1", projectId: projectIds.mission, minutes: 50, note: "Sprint Backlog geklärt", createdAt: makeDate(1) },
-    { id: "log-2", projectId: projectIds.training, minutes: 40, note: "Deep Work Block", createdAt: makeDate(2) },
-    { id: "log-3", projectId: projectIds.launch, minutes: 30, note: "Landing Page Text", createdAt: makeDate(3) },
-    { id: "log-4", projectId: projectIds.mission, minutes: 25, note: "User Interviews ausgewertet", createdAt: makeDate(4) },
-    { id: "log-5", projectId: projectIds.training, minutes: 35, note: "Fokus-Sprint", createdAt: makeDate(0) },
-  ];
-
-  return base;
-};
-
-export const loadState = () => {
-  const seeded = seedData();
-  if (!hasLocalStorage()) {
-    return seeded;
+export async function createProjectRecord({ name, goal }) {
+  if (!supabase) {
+    return { error: "Supabase ist nicht konfiguriert." };
   }
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return seeded;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed.projects || !parsed.logs) return seeded;
-    return parsed;
-  } catch (err) {
-    console.warn("Konnte Zustand nicht laden, nutze Seed.", err);
-    return seeded;
+  const { data, error } = await supabase
+    .from("projects")
+    .insert({ name, goal })
+    .select("id,name,goal,status,created_at,updated_at")
+    .single();
+  if (error) return { error: error.message };
+  return { project: mapProjectRow(data) };
+}
+
+export async function updateProjectStatusRemote(projectId, status) {
+  if (!supabase) {
+    return { error: "Supabase ist nicht konfiguriert." };
   }
+  const updatedAt = new Date().toISOString();
+  const { error } = await supabase.from("projects").update({ status, updated_at: updatedAt }).eq("id", projectId);
+  if (error) return { error: error.message };
+  return { updatedAt };
+}
+
+export async function deleteProjectRemote(projectId) {
+  if (!supabase) {
+    return { error: "Supabase ist nicht konfiguriert." };
+  }
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+const touchProjectTimestamp = async (projectId, updatedAt) => {
+  const { error } = await supabase.from("projects").update({ updated_at: updatedAt }).eq("id", projectId);
+  return error?.message;
 };
 
-export const saveState = (state) => {
-  if (!hasLocalStorage()) return;
-  const safeState = cloneState(state);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(safeState));
-};
-
-export const resetState = () => {
-  const base = seedData();
-  if (hasLocalStorage()) {
-    localStorage.removeItem(STORAGE_KEY);
+export async function createLogRecord({ projectId, minutes, note, createdAt }) {
+  if (!supabase) {
+    return { error: "Supabase ist nicht konfiguriert." };
   }
-  return base;
-};
+  const timestamp = createdAt ?? new Date().toISOString();
+  const { data, error } = await supabase
+    .from("logs")
+    .insert({ project_id: projectId, minutes, note, created_at: timestamp })
+    .select("id,project_id,minutes,note,created_at")
+    .single();
+  if (error) return { error: error.message };
+
+  const touchError = await touchProjectTimestamp(projectId, timestamp);
+  if (touchError) return { error: touchError };
+
+  return { log: mapLogRow(data) };
+}
+
+export async function saveThemeSetting(theme, settingsId) {
+  if (!supabase) {
+    return { error: "Supabase ist nicht konfiguriert." };
+  }
+  const payload = { theme, updated_at: new Date().toISOString() };
+  let response;
+
+  if (settingsId) {
+    response = await supabase
+      .from("settings")
+      .update(payload)
+      .eq("id", settingsId)
+      .select("id,user_id,theme,created_at,updated_at")
+      .maybeSingle();
+    if (response.error?.code === "PGRST116") {
+      response = null;
+    }
+  }
+
+  if (!response) {
+    response = await supabase
+      .from("settings")
+      .insert(payload)
+      .select("id,user_id,theme,created_at,updated_at")
+      .single();
+  }
+
+  const { data, error } = response;
+  if (error) return { error: error.message };
+  return { settings: mapSettingsRow(data) };
+}
