@@ -56,6 +56,12 @@ body {
   padding: 24px;
   box-shadow: var(--shadow);
 }
+.topbar.sticky {
+  position: sticky;
+  top: 12px;
+  z-index: 5;
+  backdrop-filter: blur(6px);
+}
 
 .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; color: var(--muted); margin: 0 0 6px; }
 
@@ -63,6 +69,18 @@ h1 { margin: 0 0 8px; font-size: 28px; }
 .lede { margin: 0; color: var(--muted); line-height: 1.5; }
 
 .top-actions { display: flex; gap: 10px; align-items: center; }
+.top-actions.compact { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.stat-chip {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  min-width: 140px;
+}
+.stat-chip .label { color: var(--muted); font-size: 12px; }
+.stat-chip .value { font-weight: 700; font-size: 16px; }
 
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin: 20px 0; gap: 8px; }
 .tab {
@@ -116,6 +134,8 @@ h1 { margin: 0 0 8px; font-size: 28px; }
 
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .card-grid.compact { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.card-grid.equal-height { grid-auto-rows: 1fr; align-items: stretch; }
+.card-grid.focus-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
 .card {
   background: var(--card);
@@ -163,6 +183,7 @@ h1 { margin: 0 0 8px; font-size: 28px; }
 
 .charts { display: grid; gap: 12px; }
 .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.charts-only { padding: 0; border: none; background: transparent; box-shadow: none; }
 
 .bar-chart { display: grid; gap: 10px; }
 .bar-row { display: grid; gap: 6px; }
