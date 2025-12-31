@@ -2,14 +2,21 @@ import {
   addLogEntry,
   addProject,
   buildProjectTotals,
-  deleteProject,
   heatmapSeries,
+  getDefaultState,
   setProjectStatus,
   statsSnapshot,
 } from "./state.js";
-import { loadState, saveState } from "./persistence.js";
+import {
+  createLogRecord,
+  createProjectRecord,
+  deleteProjectRemote,
+  loadState,
+  saveThemeSetting,
+  updateProjectStatusRemote,
+} from "./persistence.js";
 
-let state = loadState();
+let state = getDefaultState();
 let activeView = "focus";
 
 const viewButtons = document.querySelectorAll("[data-view]");
@@ -60,13 +67,6 @@ function formatDate(iso) {
   return `${date} · ${time}`;
 }
 
-function setTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  state.settings.theme = theme;
-  themeToggle.textContent = theme === "dark" ? "🌙" : "☀️";
-  persist();
-}
-
 function toggleView(key) {
   activeView = key;
   Object.entries(views).forEach(([name, el]) => {
@@ -80,11 +80,6 @@ function showToast(message, type = "success") {
   toast.classList.remove("hidden", "success", "error");
   toast.classList.add(type);
   setTimeout(() => toast.classList.add("hidden"), 2500);
-}
-
-function persist() {
-  saveState(state);
-  render();
 }
 
 function renderSummary() {
@@ -176,11 +171,7 @@ function renderProjectCard(project, context = "focus") {
   const removeBtn = document.createElement("button");
   removeBtn.className = "ghost";
   removeBtn.textContent = "Löschen";
-  removeBtn.addEventListener("click", () => {
-    state = deleteProject(state, project.id);
-    showToast("Projekt gelöscht", "success");
-    persist();
-  });
+  removeBtn.addEventListener("click", () => handleDeleteProject(project.id));
   actions.appendChild(removeBtn);
 
   return card;
@@ -264,15 +255,58 @@ function render() {
   renderHeatmap();
 }
 
-function changeStatus(projectId, status) {
-  const result = setProjectStatus(state, projectId, status);
-  if (result.error) {
+function applyTheme(theme) {
+  const nextTheme = theme || "dark";
+  document.documentElement.setAttribute("data-theme", nextTheme);
+  state.settings.theme = nextTheme;
+  themeToggle.textContent = nextTheme === "dark" ? "🌙" : "☀️";
+}
+
+async function updateTheme(theme) {
+  applyTheme(theme);
+  const result = await saveThemeSetting(theme, state.settings.id);
+  if (result?.error) {
     showToast(result.error, "error");
     return;
   }
-  state = result.state;
+  if (result?.settings) {
+    state.settings = result.settings;
+  }
+}
+
+async function refreshState(showErrors = true) {
+  const { state: remoteState, error } = await loadState();
+  state = remoteState;
+  applyTheme(state.settings?.theme);
+  render();
+  if (error && showErrors) {
+    showToast(error, "error");
+  }
+}
+
+async function changeStatus(projectId, status) {
+  const gateCheck = setProjectStatus(state, projectId, status);
+  if (gateCheck.error) {
+    showToast(gateCheck.error, "error");
+    return;
+  }
+  const { error } = await updateProjectStatusRemote(projectId, status);
+  if (error) {
+    showToast(error, "error");
+    return;
+  }
+  await refreshState(false);
   showToast(`Status: ${status}`);
-  persist();
+}
+
+async function handleDeleteProject(projectId) {
+  const { error } = await deleteProjectRemote(projectId);
+  if (error) {
+    showToast(error, "error");
+    return;
+  }
+  await refreshState(false);
+  showToast("Projekt gelöscht", "success");
 }
 
 function openLogModal(projectId) {
@@ -300,6 +334,48 @@ function closeLogModal() {
   modal.classList.add("hidden");
 }
 
+async function handleLogSubmit() {
+  try {
+    const minutes = Number(logMinutes.value);
+    const createdAt = logDate.value ? new Date(logDate.value).toISOString() : new Date().toISOString();
+    addLogEntry(state, {
+      projectId: logProject.value,
+      minutes,
+      note: logNote.value,
+      createdAt,
+    });
+    const { error } = await createLogRecord({
+      projectId: logProject.value,
+      minutes,
+      note: logNote.value,
+      createdAt,
+    });
+    if (error) throw new Error(error);
+    showToast("Update gespeichert", "success");
+    closeLogModal();
+    await refreshState(false);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function handleProjectSubmit(formData) {
+  try {
+    const { project } = addProject(state, {
+      name: formData.get("name"),
+      goal: formData.get("goal"),
+    });
+    const { error } = await createProjectRecord({ name: project.name, goal: project.goal });
+    if (error) throw new Error(error);
+    projectForm.reset();
+    showToast("Projekt angelegt", "success");
+    await refreshState(false);
+    toggleView("queue");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
 function bindEvents() {
   viewButtons.forEach((btn) =>
     btn.addEventListener("click", () => toggleView(btn.dataset.view))
@@ -315,40 +391,13 @@ function bindEvents() {
 
   logForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    try {
-      const minutes = Number(logMinutes.value);
-      const createdAt = logDate.value ? new Date(logDate.value).toISOString() : new Date().toISOString();
-      const { state: next } = addLogEntry(state, {
-        projectId: logProject.value,
-        minutes,
-        note: logNote.value,
-        createdAt,
-      });
-      state = next;
-      showToast("Update gespeichert", "success");
-      closeLogModal();
-      persist();
-    } catch (err) {
-      showToast(err.message, "error");
-    }
+    handleLogSubmit();
   });
 
   projectForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const formData = new FormData(projectForm);
-    try {
-      const { state: next } = addProject(state, {
-        name: formData.get("name"),
-        goal: formData.get("goal"),
-      });
-      state = next;
-      projectForm.reset();
-      showToast("Projekt angelegt", "success");
-      persist();
-      toggleView("queue");
-    } catch (err) {
-      showToast(err.message, "error");
-    }
+    handleProjectSubmit(formData);
   });
 
   quickLogBtn.addEventListener("click", () => openLogModal());
@@ -360,7 +409,7 @@ function bindEvents() {
 
   themeToggle.addEventListener("click", () => {
     const nextTheme = state.settings.theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
+    updateTheme(nextTheme);
   });
 
   closeModalBtn.addEventListener("click", closeLogModal);
@@ -373,13 +422,14 @@ function bindEvents() {
 
 function initTheme() {
   const theme = state.settings?.theme ?? "dark";
-  setTheme(theme);
+  applyTheme(theme);
 }
 
-function init() {
+async function init() {
   initTheme();
   bindEvents();
   render();
+  await refreshState(true);
 }
 
 init();

@@ -14,7 +14,7 @@ export const nowIso = () => new Date().toISOString();
 export const getDefaultState = () => ({
   projects: [],
   logs: [],
-  settings: { theme: "dark" },
+  settings: { theme: "dark", id: null, userId: null },
 });
 
 export const cloneState = (state) => ({
