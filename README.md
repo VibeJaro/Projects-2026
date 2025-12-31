@@ -3,12 +3,14 @@
 Mission Control 2026 ist ein auf Vercel deploybares Dashboard, um Projekte zu planen, Updates zu loggen und Fortschritt ohne KI-Features sichtbar zu machen. Die App läuft vollständig im Browser (Local Storage) und ist Supabase-ready, sobald die Keys hinterlegt werden.
 
 ## Features (aktuelle Version ohne KI)
-- Tab-Navigation für **Fokus**, **Queue** und **Updates & Charts**
+- Kompakter, sticky Header mit Theme-Toggle, Schnellaktionen (+Update/+Projekt) und Minuten-/Update-Übersicht
+- Tab-Navigation für **Fokus**, **Übersicht** (Warteliste & Abgeschlossen) und **Updates & Charts**
+- Fokus zeigt ausschließlich aktive Projekte (max. 3), die Übersicht bündelt pausierte, wartende und fertige Projekte mit gleichmäßigen Kachelabständen
 - Light/Dark-Theme mit Persistenz
 - Gatekeeper: maximal **drei aktive Projekte** gleichzeitig
 - Projekt-CRUD (anlegen, aktivieren/pausieren/abschließen, löschen)
-- Update-Modal mit Quick-Chips (+15/+25/+50 Minuten) und optionaler Datumsangabe
-- Timeline, Balkendiagramm (Minuten pro Projekt) und 14-Tage-Heatmap
+- Update-Modal mit Quick-Chips (+15/+25/+50 Minuten) und vorbefüllter Datums-/Uhrzeitangabe
+- Balkendiagramm (Minuten pro Projekt), 14-Tage-Heatmap und AI-Report-Platzhalter
 - Seed-Daten zum schnellen Testen
 
 ## Schnellstart (lokal)

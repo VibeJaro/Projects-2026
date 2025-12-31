@@ -7,7 +7,7 @@ import {
   setProjectStatus,
   statsSnapshot,
 } from "./state.js";
-import { loadState, resetState, saveState } from "./persistence.js";
+import { loadState, saveState } from "./persistence.js";
 
 let state = loadState();
 let activeView = "focus";
@@ -20,17 +20,14 @@ const views = {
 };
 
 const summaryEls = {
-  active: document.getElementById("metricActive"),
   minutes: document.getElementById("metricMinutes"),
   last: document.getElementById("metricLast"),
-  queue: document.getElementById("metricQueue"),
 };
 
 const lists = {
   focus: document.getElementById("focusList"),
   queue: document.getElementById("queueList"),
   done: document.getElementById("doneList"),
-  timeline: document.getElementById("timeline"),
   barChart: document.getElementById("barChart"),
   heatmap: document.getElementById("heatmap"),
 };
@@ -44,11 +41,9 @@ const logDate = document.getElementById("logDate");
 const toast = document.getElementById("toast");
 
 const quickLogBtn = document.getElementById("quickLog");
-const openLogFromUpdates = document.getElementById("openLogFromUpdates");
 const quickProjectBtn = document.getElementById("quickProject");
 const projectForm = document.getElementById("projectForm");
 const themeToggle = document.getElementById("themeToggle");
-const resetBtn = document.getElementById("resetData");
 const chipButtons = document.querySelectorAll(".chip-row .chip");
 const closeModalBtn = document.getElementById("closeModal");
 const cancelLogBtn = document.getElementById("cancelLog");
@@ -93,9 +88,7 @@ function persist() {
 
 function renderSummary() {
   const stats = statsSnapshot(state);
-  summaryEls.active.textContent = stats.active.length;
   summaryEls.minutes.textContent = stats.totalMinutes;
-  summaryEls.queue.textContent = stats.queued.length;
   summaryEls.last.textContent = stats.lastLog
     ? `${formatDate(stats.lastLog.createdAt)} · ${projectName(stats.lastLog.projectId)}`
     : "–";
@@ -108,7 +101,7 @@ function statusBadge(status) {
     active: "Aktiv",
     paused: "Pausiert",
     queued: "Queue",
-    done: "Done",
+    done: "Fertig",
   }[status];
   badge.textContent = label ?? status;
   return badge;
@@ -121,6 +114,27 @@ function projectName(id) {
 function projectMinutes(projectId) {
   const totals = buildProjectTotals(state);
   return totals.get(projectId) ?? 0;
+}
+
+function chipLabel(status) {
+  switch (status) {
+    case "active":
+      return "🔥 Fokus";
+    case "paused":
+      return "⏸ Pausiert";
+    case "queued":
+      return "📂 Wartet";
+    case "done":
+      return "🏁 Abgeschlossen";
+    default:
+      return status;
+  }
+}
+
+function currentDateTimeLocal() {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
 function renderProjectCard(project, context = "focus") {
@@ -136,7 +150,7 @@ function renderProjectCard(project, context = "focus") {
     <p class="goal">${project.goal || "Kein Ziel hinterlegt"}</p>
     <div class="goal-row">
       <span class="meta">${formatMinutes(minutes)} geloggt</span>
-      <span class="chip">${project.status === "active" ? "🔥 Fokus" : "⏸ Kontrolle"}</span>
+      <span class="chip">${chipLabel(project.status)}</span>
     </div>
     <div class="button-row"></div>
   `;
@@ -188,7 +202,7 @@ function renderProjectCard(project, context = "focus") {
 function renderFocus() {
   const stats = statsSnapshot(state);
   lists.focus.innerHTML = "";
-  const items = [...stats.active, ...stats.paused];
+  const items = stats.active.slice(0, 3);
   if (!items.length) {
     lists.focus.innerHTML = '<p class="muted">Keine aktiven Projekte. Ab in die Queue!</p>';
     return;
@@ -199,36 +213,16 @@ function renderFocus() {
 function renderQueue() {
   const stats = statsSnapshot(state);
   lists.queue.innerHTML = "";
-  stats.queued.forEach((project) => lists.queue.appendChild(renderProjectCard(project, "queue")));
-  if (!stats.queued.length) {
-    lists.queue.innerHTML = '<p class="muted">Keine Projekte in der Queue.</p>';
+  const waiting = [...stats.paused, ...stats.queued];
+  waiting.forEach((project) => lists.queue.appendChild(renderProjectCard(project, "queue")));
+  if (!waiting.length) {
+    lists.queue.innerHTML = '<p class="muted">Keine Projekte in der Übersicht.</p>';
   }
   lists.done.innerHTML = "";
   stats.done.forEach((project) => lists.done.appendChild(renderProjectCard(project)));
   if (!stats.done.length) {
     lists.done.innerHTML = '<p class="muted">Noch nichts abgeschlossen.</p>';
   }
-}
-
-function renderTimeline() {
-  const items = state.logs.slice(0, 12);
-  lists.timeline.innerHTML = "";
-  if (!items.length) {
-    lists.timeline.innerHTML = '<p class="muted">Noch keine Updates geschrieben.</p>';
-    return;
-  }
-  items.forEach((log) => {
-    const el = document.createElement("article");
-    el.className = "item";
-    el.innerHTML = `
-      <div class="badge-row">${statusBadge(state.projects.find((p) => p.id === log.projectId)?.status ?? "queued").outerHTML}
-      <span class="meta">${projectName(log.projectId)}</span></div>
-      <h4>${formatMinutes(log.minutes)}</h4>
-      <p class="goal">${log.note || "Ohne Notiz"}</p>
-      <div class="meta">${formatDate(log.createdAt)}</div>
-    `;
-    lists.timeline.appendChild(el);
-  });
 }
 
 function renderBarChart() {
@@ -279,7 +273,6 @@ function render() {
   renderSummary();
   renderFocus();
   renderQueue();
-  renderTimeline();
   renderBarChart();
   renderHeatmap();
 }
@@ -309,7 +302,7 @@ function openLogModal(projectId) {
   }
   logMinutes.value = "";
   logNote.value = "";
-  logDate.value = "";
+  logDate.value = currentDateTimeLocal();
   modal.classList.remove("hidden");
   logMinutes.focus();
 }
@@ -370,7 +363,6 @@ function bindEvents() {
   });
 
   quickLogBtn.addEventListener("click", () => openLogModal());
-  openLogFromUpdates.addEventListener("click", () => openLogModal());
   quickProjectBtn.addEventListener("click", () => {
     toggleView("queue");
     document.getElementById("projectName").focus();
@@ -379,12 +371,6 @@ function bindEvents() {
   themeToggle.addEventListener("click", () => {
     const nextTheme = state.settings.theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
-  });
-
-  resetBtn.addEventListener("click", () => {
-    state = resetState();
-    showToast("Seed-Daten geladen", "success");
-    persist();
   });
 
   closeModalBtn.addEventListener("click", closeLogModal);
