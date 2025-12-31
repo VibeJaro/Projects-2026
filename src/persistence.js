@@ -1,96 +1,121 @@
-import { cloneState, getDefaultState } from "./state.js";
+import { getDefaultState } from "./state.js";
+import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
 
-const STORAGE_KEY = "projects-2026-state";
+const SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 
-const hasLocalStorage = () => {
-  try {
-    return typeof localStorage !== "undefined";
-  } catch {
-    return false;
-  }
-};
+const fromDbProject = (row) => ({
+  id: row.id,
+  name: row.name,
+  goal: row.goal ?? "",
+  status: row.status,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
 
-const seedData = () => {
+const toDbProject = (project) => ({
+  id: project.id,
+  name: project.name,
+  goal: project.goal ?? "",
+  status: project.status,
+  created_at: project.createdAt,
+  updated_at: project.updatedAt,
+});
+
+const fromDbLog = (row) => ({
+  id: row.id,
+  projectId: row.project_id,
+  minutes: row.minutes,
+  note: row.note ?? "",
+  createdAt: row.created_at,
+});
+
+const toDbLog = (log) => ({
+  id: log.id,
+  project_id: log.projectId,
+  minutes: log.minutes,
+  note: log.note ?? "",
+  created_at: log.createdAt,
+});
+
+const fromDbSettings = (row) => ({
+  theme: row?.theme ?? "dark",
+});
+
+export async function loadState() {
   const base = getDefaultState();
-  const now = new Date();
-  const projectIds = {
-    mission: "mission-alpha",
-    training: "training-hours",
-    launch: "launch-prep",
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase ist nicht konfiguriert. Bitte env.js mit NEXT_PUBLIC_SUPABASE_URL und NEXT_PUBLIC_SUPABASE_ANON_KEY bereitstellen.");
+  }
+
+  const [{ data: projects, error: projectError }, { data: logs, error: logError }] = await Promise.all([
+    supabase.from("projects").select("*").order("created_at", { ascending: false }),
+    supabase.from("logs").select("*").order("created_at", { ascending: false }),
+  ]);
+
+  if (projectError) throw projectError;
+  if (logError) throw logError;
+
+  const { data: settingsRow, error: settingsError } = await supabase
+    .from("settings")
+    .select("theme")
+    .eq("id", SETTINGS_ID)
+    .maybeSingle();
+
+  if (settingsError && settingsError.code !== "PGRST116") {
+    throw settingsError;
+  }
+
+  return {
+    ...base,
+    projects: (projects ?? []).map(fromDbProject),
+    logs: (logs ?? []).map(fromDbLog),
+    settings: settingsRow ? fromDbSettings(settingsRow) : base.settings,
   };
+}
 
-  base.projects = [
-    {
-      id: projectIds.mission,
-      name: "Mission Alpha",
-      goal: "Release MVP und Nutzer onboarden",
-      status: "active",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-    {
-      id: projectIds.training,
-      name: "Training & Fokus",
-      goal: "2h Deep Work pro Tag",
-      status: "active",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-    {
-      id: projectIds.launch,
-      name: "Launch Prep",
-      goal: "Marketing Assets finalisieren",
-      status: "paused",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-  ];
+export async function persistProject(project) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase-Konfiguration fehlt.");
+  const { error } = await supabase.from("projects").insert([toDbProject(project)]);
+  if (error) throw error;
+}
 
-  const today = new Date();
-  const makeDate = (offset) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - offset);
-    return d.toISOString();
-  };
+export async function updateProject(projectId, updates) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase-Konfiguration fehlt.");
+  const payload = {};
+  if (updates.status !== undefined) payload.status = updates.status;
+  if (updates.goal !== undefined) payload.goal = updates.goal;
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.updatedAt !== undefined) payload.updated_at = updates.updatedAt;
+  const { error } = await supabase
+    .from("projects")
+    .update(payload)
+    .eq("id", projectId);
+  if (error) throw error;
+}
 
-  base.logs = [
-    { id: "log-1", projectId: projectIds.mission, minutes: 50, note: "Sprint Backlog geklärt", createdAt: makeDate(1) },
-    { id: "log-2", projectId: projectIds.training, minutes: 40, note: "Deep Work Block", createdAt: makeDate(2) },
-    { id: "log-3", projectId: projectIds.launch, minutes: 30, note: "Landing Page Text", createdAt: makeDate(3) },
-    { id: "log-4", projectId: projectIds.mission, minutes: 25, note: "User Interviews ausgewertet", createdAt: makeDate(4) },
-    { id: "log-5", projectId: projectIds.training, minutes: 35, note: "Fokus-Sprint", createdAt: makeDate(0) },
-  ];
+export async function removeProject(projectId) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase-Konfiguration fehlt.");
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) throw error;
+}
 
-  return base;
-};
+export async function persistLog(log) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase-Konfiguration fehlt.");
+  const { error } = await supabase.from("logs").insert([toDbLog(log)]);
+  if (error) throw error;
+}
 
-export const loadState = () => {
-  const seeded = seedData();
-  if (!hasLocalStorage()) {
-    return seeded;
-  }
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return seeded;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed.projects || !parsed.logs) return seeded;
-    return parsed;
-  } catch (err) {
-    console.warn("Konnte Zustand nicht laden, nutze Seed.", err);
-    return seeded;
-  }
-};
-
-export const saveState = (state) => {
-  if (!hasLocalStorage()) return;
-  const safeState = cloneState(state);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(safeState));
-};
-
-export const resetState = () => {
-  const base = seedData();
-  if (hasLocalStorage()) {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-  return base;
-};
+export async function persistSettings(settings) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase-Konfiguration fehlt.");
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      {
+        id: SETTINGS_ID,
+        theme: settings.theme,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+  if (error) throw error;
+}

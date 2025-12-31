@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import assert from "node:assert/strict";
+import test from "node:test";
 import {
   addLogEntry,
   addProject,
@@ -8,42 +8,41 @@ import {
   heatmapSeries,
   MAX_ACTIVE_PROJECTS,
   setProjectStatus,
-} from '../src/state.js';
+} from "../src/state.js";
 
 test('Gatekeeper lässt maximal drei aktive Projekte zu', () => {
-  let state = getDefaultState();
+  const projects = [];
   const projectIds = [];
   for (let i = 0; i < MAX_ACTIVE_PROJECTS + 1; i += 1) {
-    const result = addProject(state, { name: `Projekt ${i + 1}` });
-    state = result.state;
+    const result = addProject(getDefaultState(), { name: `Projekt ${i + 1}` });
+    projects.push(result.project);
     projectIds.push(result.project.id);
   }
 
   for (let i = 0; i < MAX_ACTIVE_PROJECTS; i += 1) {
-    const result = setProjectStatus(state, projectIds[i], 'active');
-    state = result.state;
+    const result = setProjectStatus(projects, projectIds[i], "active");
+    projects[i] = result.project;
   }
 
-  const attempt = setProjectStatus(state, projectIds[3], 'active');
+  const attempt = setProjectStatus(projects, projectIds[3], "active");
   assert.equal(attempt.error, `Maximal ${MAX_ACTIVE_PROJECTS} aktive Projekte erlaubt.`);
-  assert.equal(countActiveProjects(attempt.state), MAX_ACTIVE_PROJECTS);
+  assert.equal(countActiveProjects(projects), MAX_ACTIVE_PROJECTS);
 });
 
 test('Logs erhöhen Fortschrittsminuten und aktualisieren den Zeitstempel', () => {
-  let state = getDefaultState();
-  const { state: withProject, project } = addProject(state, { name: 'Testprojekt', goal: 'Goal' });
-  state = withProject;
-  ({ state } = setProjectStatus(state, project.id, 'active'));
+  const { project } = addProject(getDefaultState(), { name: "Testprojekt", goal: "Goal" });
+  const { project: activeProject } = setProjectStatus([project], project.id, "active");
 
-  const before = state.projects.find((p) => p.id === project.id).updatedAt;
-  const { state: withLog } = addLogEntry(state, { projectId: project.id, minutes: 30, note: 'Deep Work' });
-  state = withLog;
+  const before = activeProject.updatedAt;
+  const { log, project: updatedProject } = addLogEntry([activeProject], {
+    projectId: project.id,
+    minutes: 30,
+    note: "Deep Work",
+  });
 
-  assert.equal(state.logs.length, 1);
-  assert.equal(state.logs[0].minutes, 30);
-  const updated = state.projects.find((p) => p.id === project.id).updatedAt;
-  assert.ok(updated >= before);
-  assert.equal(updated.slice(0, 19), state.logs[0].createdAt.slice(0, 19));
+  assert.equal(log.minutes, 30);
+  assert.ok(updatedProject.updatedAt >= before);
+  assert.equal(updatedProject.updatedAt.slice(0, 19), log.createdAt.slice(0, 19));
 });
 
 test('Heatmap enthält die letzten 14 Tage', () => {

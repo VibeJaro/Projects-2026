@@ -1,6 +1,5 @@
-## UI/UX Refresh (aktueller Stand)
-- Sticky Header mit Schnellaktionen (Theme, Update, Projekt) und Kennzahlen zu geloggten Minuten & letztem Update.
-- Tabs umbenannt/zusammengezogen: **Fokus**, **Übersicht** (Queue, pausiert, abgeschlossen) und **Updates/Charts**.
-- Fokus zeigt nur aktive Projekte (max. 3 Kacheln ohne Zusatztexte), Übersicht bündelt alle anderen Projekte mit gleichmäßigen Kachelabständen.
-- Log-Modal nutzt jetzt standardmäßig Datum/Zeit „jetzt“.
-- Updates/Charts reduziert auf Diagramme plus AI-Report-Platzhalter; Seed-Button und Erklärtexte entfernt.
+## Supabase-Anbindung & Aufräumarbeiten
+- Local-Storage-Seeddaten entfernt; Projekte, Logs und Settings werden ausschließlich in Supabase gelesen/geschrieben.
+- Neue `env.js`-Erwartung (aus Keys `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY`), damit das statische Frontend die Supabase-Instanz kennt.
+- UI-Platzhalter für AI-Report entfernt, Fokus auf Projekttafeln und Charts.
+- README/Build-Hinweise für Vercel ergänzt (Env-Bootstrapping im Build-Schritt).

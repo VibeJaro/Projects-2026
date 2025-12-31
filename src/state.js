@@ -17,17 +17,10 @@ export const getDefaultState = () => ({
   settings: { theme: "dark" },
 });
 
-export const cloneState = (state) => ({
-  projects: state.projects.map((p) => ({ ...p })),
-  logs: state.logs.map((l) => ({ ...l })),
-  settings: { ...state.settings },
-});
-
 export function addProject(state, { name, goal = "" }) {
   if (!name?.trim()) {
     throw new Error("Projektname darf nicht leer sein.");
   }
-  const nextState = cloneState(state);
   const project = {
     id: createId(),
     name: name.trim(),
@@ -36,56 +29,41 @@ export function addProject(state, { name, goal = "" }) {
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
-  nextState.projects.unshift(project);
-  return { state: nextState, project };
+  return { project };
 }
 
-export function deleteProject(state, projectId) {
-  const nextState = cloneState(state);
-  nextState.projects = nextState.projects.filter((p) => p.id !== projectId);
-  nextState.logs = nextState.logs.filter((l) => l.projectId !== projectId);
-  return nextState;
+export function updateProject(project, updates) {
+  return { ...project, ...updates, updatedAt: nowIso() };
 }
 
-export function updateProject(state, projectId, updates) {
-  const nextState = cloneState(state);
-  const target = nextState.projects.find((p) => p.id === projectId);
-  if (!target) throw new Error("Projekt nicht gefunden.");
-  Object.assign(target, updates, { updatedAt: nowIso() });
-  return nextState;
+export function countActiveProjects(projects) {
+  return projects.filter((p) => p.status === "active").length;
 }
 
-export function countActiveProjects(state) {
-  return state.projects.filter((p) => p.status === "active").length;
-}
-
-export function setProjectStatus(state, projectId, status) {
+export function setProjectStatus(projects, projectId, status) {
   if (!STATUS_ORDER.includes(status)) {
     throw new Error("Ungültiger Status");
   }
-  const nextState = cloneState(state);
-  const project = nextState.projects.find((p) => p.id === projectId);
+
+  const project = projects.find((p) => p.id === projectId);
   if (!project) throw new Error("Projekt nicht gefunden.");
 
   if (status === "active" && project.status !== "active") {
-    const currentActive = countActiveProjects(nextState);
+    const currentActive = countActiveProjects(projects);
     if (currentActive >= MAX_ACTIVE_PROJECTS) {
-      return { state: nextState, error: `Maximal ${MAX_ACTIVE_PROJECTS} aktive Projekte erlaubt.` };
+      return { error: `Maximal ${MAX_ACTIVE_PROJECTS} aktive Projekte erlaubt.` };
     }
   }
 
-  project.status = status;
-  project.updatedAt = nowIso();
-  return { state: nextState };
+  return { project: updateProject(project, { status }) };
 }
 
-export function addLogEntry(state, { projectId, minutes, note = "", createdAt = nowIso() }) {
+export function addLogEntry(projects, { projectId, minutes, note = "", createdAt = nowIso() }) {
   const mins = Number(minutes);
   if (!Number.isFinite(mins) || mins <= 0) {
     throw new Error("Minuten müssen größer als 0 sein.");
   }
-  const nextState = cloneState(state);
-  const project = nextState.projects.find((p) => p.id === projectId);
+  const project = projects.find((p) => p.id === projectId);
   if (!project) throw new Error("Projekt nicht gefunden.");
 
   const timestamp = createdAt ?? nowIso();
@@ -97,9 +75,7 @@ export function addLogEntry(state, { projectId, minutes, note = "", createdAt = 
     createdAt: timestamp,
   };
 
-  nextState.logs.unshift(log);
-  project.updatedAt = timestamp;
-  return { state: nextState, log };
+  return { log, project: updateProject(project, { updatedAt: timestamp }) };
 }
 
 export function projectMinutes(logs, projectId) {
@@ -108,19 +84,19 @@ export function projectMinutes(logs, projectId) {
     .reduce((sum, log) => sum + log.minutes, 0);
 }
 
-export function summarizeProjects(state) {
-  const totals = state.projects.map((project) => ({
+export function summarizeProjects(projects, logs) {
+  const totals = projects.map((project) => ({
     ...project,
-    minutes: projectMinutes(state.logs, project.id),
+    minutes: projectMinutes(logs, project.id),
   }));
 
   totals.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
   return totals;
 }
 
-export function buildProjectTotals(state) {
+export function buildProjectTotals(logs) {
   const totals = new Map();
-  for (const log of state.logs) {
+  for (const log of logs) {
     totals.set(log.projectId, (totals.get(log.projectId) ?? 0) + log.minutes);
   }
   return totals;
@@ -151,14 +127,14 @@ export function heatmapSeries(logs, days = 14) {
   return result.map((d) => ({ ...d, intensity: Math.min(d.value / max, 1) }));
 }
 
-export function statsSnapshot(state) {
-  const totals = summarizeProjects(state);
+export function statsSnapshot(projects, logs) {
+  const totals = summarizeProjects(projects, logs);
   const active = totals.filter((p) => p.status === "active");
   const queued = totals.filter((p) => p.status === "queued");
   const paused = totals.filter((p) => p.status === "paused");
   const done = totals.filter((p) => p.status === "done");
-  const lastLog = state.logs[0];
-  const totalMinutes = state.logs.reduce((sum, log) => sum + log.minutes, 0);
+  const lastLog = logs[0];
+  const totalMinutes = logs.reduce((sum, log) => sum + log.minutes, 0);
 
   return {
     totals,
@@ -168,6 +144,6 @@ export function statsSnapshot(state) {
     done,
     lastLog,
     totalMinutes,
-    heatmap: heatmapSeries(state.logs),
+    heatmap: heatmapSeries(logs),
   };
 }

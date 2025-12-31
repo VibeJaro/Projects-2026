@@ -2,14 +2,24 @@ import {
   addLogEntry,
   addProject,
   buildProjectTotals,
-  deleteProject,
   heatmapSeries,
   setProjectStatus,
   statsSnapshot,
 } from "./state.js";
-import { loadState, saveState } from "./persistence.js";
+import {
+  loadState,
+  persistLog,
+  persistProject,
+  persistSettings,
+  removeProject,
+  updateProject,
+} from "./persistence.js";
 
-let state = loadState();
+let state = {
+  projects: [],
+  logs: [],
+  settings: { theme: "dark" },
+};
 let activeView = "focus";
 
 const viewButtons = document.querySelectorAll("[data-view]");
@@ -64,7 +74,6 @@ function setTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   state.settings.theme = theme;
   themeToggle.textContent = theme === "dark" ? "🌙" : "☀️";
-  persist();
 }
 
 function toggleView(key) {
@@ -82,13 +91,17 @@ function showToast(message, type = "success") {
   setTimeout(() => toast.classList.add("hidden"), 2500);
 }
 
-function persist() {
-  saveState(state);
-  render();
+async function persistSettingsToDb() {
+  try {
+    await persistSettings(state.settings);
+  } catch (err) {
+    showToast("Konnte Einstellungen nicht speichern", "error");
+    console.error(err);
+  }
 }
 
 function renderSummary() {
-  const stats = statsSnapshot(state);
+  const stats = statsSnapshot(state.projects, state.logs);
   summaryEls.minutes.textContent = stats.totalMinutes;
   summaryEls.last.textContent = stats.lastLog
     ? `${formatDate(stats.lastLog.createdAt)} · ${projectName(stats.lastLog.projectId)}`
@@ -113,7 +126,7 @@ function projectName(id) {
 }
 
 function projectMinutes(projectId) {
-  const totals = buildProjectTotals(state);
+  const totals = buildProjectTotals(state.logs);
   return totals.get(projectId) ?? 0;
 }
 
@@ -176,10 +189,17 @@ function renderProjectCard(project, context = "focus") {
   const removeBtn = document.createElement("button");
   removeBtn.className = "ghost";
   removeBtn.textContent = "Löschen";
-  removeBtn.addEventListener("click", () => {
-    state = deleteProject(state, project.id);
-    showToast("Projekt gelöscht", "success");
-    persist();
+  removeBtn.addEventListener("click", async () => {
+    try {
+      await removeProject(project.id);
+      state.projects = state.projects.filter((p) => p.id !== project.id);
+      state.logs = state.logs.filter((l) => l.projectId !== project.id);
+      showToast("Projekt gelöscht", "success");
+      render();
+    } catch (err) {
+      console.error(err);
+      showToast("Konnte Projekt nicht löschen", "error");
+    }
   });
   actions.appendChild(removeBtn);
 
@@ -187,7 +207,7 @@ function renderProjectCard(project, context = "focus") {
 }
 
 function renderFocus() {
-  const stats = statsSnapshot(state);
+  const stats = statsSnapshot(state.projects, state.logs);
   lists.focus.innerHTML = "";
   const items = [...stats.active].slice(0, 3);
   if (!items.length) {
@@ -198,7 +218,7 @@ function renderFocus() {
 }
 
 function renderQueue() {
-  const stats = statsSnapshot(state);
+  const stats = statsSnapshot(state.projects, state.logs);
   lists.queue.innerHTML = "";
   const queuedAndPaused = [...stats.queued, ...stats.paused];
   queuedAndPaused.forEach((project) => lists.queue.appendChild(renderProjectCard(project, "queue")));
@@ -213,7 +233,7 @@ function renderQueue() {
 }
 
 function renderBarChart() {
-  const totals = Array.from(buildProjectTotals(state).entries())
+  const totals = Array.from(buildProjectTotals(state.logs).entries())
     .map(([projectId, minutes]) => ({ projectId, minutes }))
     .sort((a, b) => b.minutes - a.minutes);
   lists.barChart.innerHTML = "";
@@ -264,15 +284,22 @@ function render() {
   renderHeatmap();
 }
 
-function changeStatus(projectId, status) {
-  const result = setProjectStatus(state, projectId, status);
+async function changeStatus(projectId, status) {
+  const result = setProjectStatus(state.projects, projectId, status);
   if (result.error) {
     showToast(result.error, "error");
     return;
   }
-  state = result.state;
-  showToast(`Status: ${status}`);
-  persist();
+
+  try {
+    await updateProject(projectId, { status: result.project.status, updatedAt: result.project.updatedAt });
+    state.projects = state.projects.map((p) => (p.id === projectId ? result.project : p));
+    render();
+    showToast(`Status: ${status}`);
+  } catch (err) {
+    showToast("Konnte Status nicht speichern", "error");
+    console.error(err);
+  }
 }
 
 function openLogModal(projectId) {
@@ -313,41 +340,51 @@ function bindEvents() {
     })
   );
 
-  logForm.addEventListener("submit", (event) => {
+  logForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
       const minutes = Number(logMinutes.value);
       const createdAt = logDate.value ? new Date(logDate.value).toISOString() : new Date().toISOString();
-      const { state: next } = addLogEntry(state, {
+      const { log, project } = addLogEntry(state.projects, {
         projectId: logProject.value,
         minutes,
         note: logNote.value,
         createdAt,
       });
-      state = next;
+
+      await persistLog(log);
+      await updateProject(project.id, { updatedAt: project.updatedAt });
+
+      state.logs.unshift(log);
+      state.projects = state.projects.map((p) => (p.id === project.id ? project : p));
       showToast("Update gespeichert", "success");
       closeLogModal();
-      persist();
+      render();
     } catch (err) {
       showToast(err.message, "error");
+      console.error(err);
     }
   });
 
-  projectForm.addEventListener("submit", (event) => {
+  projectForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(projectForm);
     try {
-      const { state: next } = addProject(state, {
+      const { project } = addProject(state, {
         name: formData.get("name"),
         goal: formData.get("goal"),
       });
-      state = next;
+
+      await persistProject(project);
+
+      state.projects.unshift(project);
       projectForm.reset();
       showToast("Projekt angelegt", "success");
-      persist();
+      render();
       toggleView("queue");
     } catch (err) {
       showToast(err.message, "error");
+      console.error(err);
     }
   });
 
@@ -358,9 +395,10 @@ function bindEvents() {
     document.getElementById("projectName").focus();
   });
 
-  themeToggle.addEventListener("click", () => {
+  themeToggle.addEventListener("click", async () => {
     const nextTheme = state.settings.theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
+    await persistSettingsToDb();
   });
 
   closeModalBtn.addEventListener("click", closeLogModal);
@@ -376,10 +414,18 @@ function initTheme() {
   setTheme(theme);
 }
 
-function init() {
-  initTheme();
-  bindEvents();
-  render();
+async function init() {
+  try {
+    const remote = await loadState();
+    state = remote;
+  } catch (err) {
+    console.error("Supabase Laden fehlgeschlagen", err);
+    showToast("Konnte Daten nicht laden", "error");
+  } finally {
+    initTheme();
+    bindEvents();
+    render();
+  }
 }
 
 init();
