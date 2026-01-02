@@ -41,12 +41,17 @@ const lists = {
 };
 
 const modal = document.getElementById("logModal");
+const projectLogModal = document.getElementById("projectLogModal");
 const logForm = document.getElementById("logForm");
 const logProject = document.getElementById("logProject");
 const logMinutes = document.getElementById("logMinutes");
 const logNote = document.getElementById("logNote");
 const logDate = document.getElementById("logDate");
+const projectLogTitle = document.getElementById("projectLogTitle");
+const projectLogMeta = document.getElementById("projectLogMeta");
+const projectLogList = document.getElementById("projectLogList");
 const toast = document.getElementById("toast");
+const topbar = document.querySelector(".topbar");
 
 const quickLogBtn = document.getElementById("quickLog");
 const openLogFromUpdates = document.getElementById("openLogFromUpdates");
@@ -56,6 +61,10 @@ const themeToggle = document.getElementById("themeToggle");
 const chipButtons = document.querySelectorAll(".chip-row .chip");
 const closeModalBtn = document.getElementById("closeModal");
 const cancelLogBtn = document.getElementById("cancelLog");
+const closeProjectLogBtn = document.getElementById("closeProjectLog");
+const projectLogAddUpdate = document.getElementById("projectLogAddUpdate");
+
+let overlayDepth = 0;
 
 function formatMinutes(value) {
   return `${value} min`;
@@ -79,6 +88,20 @@ function toggleView(key) {
     el.classList.toggle("active", name === key);
   });
   viewButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === key));
+}
+
+function collapseHeader() {
+  overlayDepth += 1;
+  document.body.classList.add("header-collapsed");
+  topbar?.classList.add("collapsed");
+}
+
+function releaseHeader() {
+  overlayDepth = Math.max(overlayDepth - 1, 0);
+  if (overlayDepth === 0) {
+    document.body.classList.remove("header-collapsed");
+    topbar?.classList.remove("collapsed");
+  }
 }
 
 function showToast(message, type = "success") {
@@ -121,6 +144,8 @@ function projectMinutes(projectId) {
 function renderProjectCard(project, context = "focus") {
   const card = document.createElement("article");
   card.className = "card";
+  card.tabIndex = 0;
+  card.dataset.projectId = project.id;
   const minutes = projectMinutes(project.id);
   card.innerHTML = `
     <div class="badge-row">
@@ -135,18 +160,25 @@ function renderProjectCard(project, context = "focus") {
     <div class="button-row"></div>
   `;
 
+  const attachButtonHandler = (button, handler) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      handler();
+    });
+  };
+
   const actions = card.querySelector(".button-row");
   const logBtn = document.createElement("button");
   logBtn.className = "secondary";
   logBtn.textContent = "+ Update";
-  logBtn.addEventListener("click", () => openLogModal(project.id));
+  attachButtonHandler(logBtn, () => openLogModal(project.id));
   actions.appendChild(logBtn);
 
   if (project.status === "active") {
     const pauseBtn = document.createElement("button");
     pauseBtn.className = "ghost";
     pauseBtn.textContent = "Pausieren";
-    pauseBtn.addEventListener("click", () => changeStatus(project.id, "paused"));
+    attachButtonHandler(pauseBtn, () => changeStatus(project.id, "paused"));
     actions.appendChild(pauseBtn);
   }
 
@@ -154,7 +186,7 @@ function renderProjectCard(project, context = "focus") {
     const activateBtn = document.createElement("button");
     activateBtn.className = "primary";
     activateBtn.textContent = "Aktivieren";
-    activateBtn.addEventListener("click", () => changeStatus(project.id, "active"));
+    attachButtonHandler(activateBtn, () => changeStatus(project.id, "active"));
     actions.appendChild(activateBtn);
   }
 
@@ -162,15 +194,23 @@ function renderProjectCard(project, context = "focus") {
     const doneBtn = document.createElement("button");
     doneBtn.className = "ghost";
     doneBtn.textContent = "Abschließen";
-    doneBtn.addEventListener("click", () => changeStatus(project.id, "done"));
+    attachButtonHandler(doneBtn, () => changeStatus(project.id, "done"));
     actions.appendChild(doneBtn);
   }
 
   const removeBtn = document.createElement("button");
   removeBtn.className = "ghost";
   removeBtn.textContent = "Löschen";
-  removeBtn.addEventListener("click", () => handleDeleteProject(project.id));
+  attachButtonHandler(removeBtn, () => handleDeleteProject(project.id));
   actions.appendChild(removeBtn);
+
+  card.addEventListener("click", () => openProjectLog(project.id));
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openProjectLog(project.id);
+    }
+  });
 
   return card;
 }
@@ -330,11 +370,56 @@ function openLogModal(projectId) {
   const offsetDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   logDate.value = offsetDate.toISOString().slice(0, 16);
   modal.classList.remove("hidden");
+  collapseHeader();
   logMinutes.focus();
 }
 
 function closeLogModal() {
   modal.classList.add("hidden");
+  releaseHeader();
+}
+
+function renderProjectLog(projectId) {
+  const project = state.projects.find((p) => p.id === projectId);
+  if (!project) {
+    projectLogModal.dataset.projectId = "";
+    return;
+  }
+  projectLogModal.dataset.projectId = projectId;
+  projectLogTitle.textContent = project.name;
+  const minutes = projectMinutes(projectId);
+  projectLogMeta.textContent = `${formatMinutes(minutes)} · ${formatDateShort(project.updatedAt)} aktualisiert`;
+  projectLogList.innerHTML = "";
+  const logs = state.logs.filter((log) => log.projectId === projectId);
+  if (!logs.length) {
+    projectLogList.innerHTML = '<p class="muted">Keine Logs vorhanden.</p>';
+    return;
+  }
+  logs.forEach((log) => {
+    const item = document.createElement("div");
+    item.className = "log-entry";
+    item.innerHTML = `
+      <div class="log-entry-header">
+        <span class="meta">${formatDate(log.createdAt)}</span>
+        <span class="chip">${formatMinutes(log.minutes)}</span>
+      </div>
+      <p class="log-note">${log.note || "Kein Kommentar"}</p>
+    `;
+    projectLogList.appendChild(item);
+  });
+}
+
+function openProjectLog(projectId) {
+  renderProjectLog(projectId);
+  if (!projectLogModal.dataset.projectId) return;
+  projectLogModal.classList.remove("hidden");
+  collapseHeader();
+}
+
+function closeProjectLog() {
+  projectLogModal.classList.add("hidden");
+  projectLogModal.dataset.projectId = "";
+  releaseHeader();
 }
 
 async function handleLogSubmit() {
@@ -417,9 +502,21 @@ function bindEvents() {
 
   closeModalBtn.addEventListener("click", closeLogModal);
   cancelLogBtn.addEventListener("click", closeLogModal);
+  closeProjectLogBtn.addEventListener("click", closeProjectLog);
+  projectLogAddUpdate.addEventListener("click", () => {
+    const projectId = projectLogModal.dataset.projectId;
+    closeProjectLog();
+    if (projectId) {
+      openLogModal(projectId);
+    }
+  });
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal) closeLogModal();
+  });
+
+  projectLogModal.addEventListener("click", (event) => {
+    if (event.target === projectLogModal) closeProjectLog();
   });
 }
 

@@ -159,6 +159,23 @@
     </div>
   </div>
 
+  <div id="projectLogModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="projectLogTitle">
+    <div class="modal-content log-viewer">
+      <div class="modal-header stacked">
+        <div>
+          <p class="eyebrow">Projekt-Log</p>
+          <h3 id="projectLogTitle">Projekt</h3>
+          <p class="muted small" id="projectLogMeta"></p>
+        </div>
+        <div class="modal-actions">
+          <button class="secondary" id="projectLogAddUpdate">+ Update</button>
+          <button class="ghost" id="closeProjectLog" aria-label="Log schließen">✕</button>
+        </div>
+      </div>
+      <div id="projectLogList" class="log-list"></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden" role="status"></div>
 
   <script src="./env.js"></script>
