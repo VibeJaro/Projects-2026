@@ -7,6 +7,7 @@
 - Sticky Header schlanker (max. 1/3 der Mobile-Höhe) mit Branding „MISSION CONTROL 2026“, Kennzahlen (Minuten, letztes Update als Datum) und kompakten Schnellaktionen (Theme, +Update, +Projekt).
 - Tabs umbenannt/zusammengezogen: **Fokus**, **Übersicht** (Queue, pausiert, abgeschlossen) und **Updates/Charts**.
 - Fokus zeigt nur aktive Projekte (max. 3 Kacheln ohne Zusatztexte), Übersicht bündelt jetzt alle Projekte (aktiv, wartend, pausiert, abgeschlossen) mit gleichmäßigen Kachelabständen.
+- Größere vertikale Abstände zwischen den übergeordneten Kacheln (Projekt anlegen, Aktiv, Wartend & pausiert, Abgeschlossen) sowie zwischen „Letzte 14 Tage“ und „AI Report“ für klarere Gliederung.
 - Log-Modal nutzt jetzt standardmäßig Datum/Zeit „jetzt“.
 - Updates/Charts reduziert auf Diagramme plus AI-Report-Platzhalter; Seed-Button und Erklärtexte entfernt.
 - Projekt-Kacheln zeigen nur noch den primären Status-Badge (oben links); doppelte Statuslabels entfernt.
