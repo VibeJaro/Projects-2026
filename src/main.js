@@ -18,6 +18,8 @@ import {
 
 let state = getDefaultState();
 let activeView = "focus";
+const overlays = new Set();
+let currentProjectLogId = null;
 
 const viewButtons = document.querySelectorAll("[data-view]");
 const views = {
@@ -41,11 +43,17 @@ const lists = {
 };
 
 const modal = document.getElementById("logModal");
+const projectLogModal = document.getElementById("projectLogModal");
 const logForm = document.getElementById("logForm");
 const logProject = document.getElementById("logProject");
 const logMinutes = document.getElementById("logMinutes");
 const logNote = document.getElementById("logNote");
 const logDate = document.getElementById("logDate");
+const projectLogTitle = document.getElementById("projectLogTitle");
+const projectLogMeta = document.getElementById("projectLogMeta");
+const projectLogList = document.getElementById("projectLogList");
+const closeProjectLogBtn = document.getElementById("closeProjectLog");
+const projectLogAddUpdate = document.getElementById("projectLogAddUpdate");
 const toast = document.getElementById("toast");
 
 const quickLogBtn = document.getElementById("quickLog");
@@ -56,6 +64,16 @@ const themeToggle = document.getElementById("themeToggle");
 const chipButtons = document.querySelectorAll(".chip-row .chip");
 const closeModalBtn = document.getElementById("closeModal");
 const cancelLogBtn = document.getElementById("cancelLog");
+const closeProjectLogMobileBtn = document.getElementById("closeProjectLogMobile");
+
+function setOverlayState(key, isOpen) {
+  if (isOpen) {
+    overlays.add(key);
+  } else {
+    overlays.delete(key);
+  }
+  document.body.classList.toggle("overlay-open", overlays.size > 0);
+}
 
 function formatMinutes(value) {
   return `${value} min`;
@@ -99,14 +117,19 @@ function renderSummary() {
 function statusBadge(status) {
   const badge = document.createElement("span");
   badge.className = `badge ${status}`;
-  const label = {
-    active: "Aktiv",
-    paused: "Pausiert",
-    queued: "Queue",
-    done: "Done",
-  }[status];
-  badge.textContent = label ?? status;
+  badge.textContent = statusLabel(status);
   return badge;
+}
+
+function statusLabel(status) {
+  return (
+    {
+      active: "Aktiv",
+      paused: "Pausiert",
+      queued: "Queue",
+      done: "Done",
+    }[status] ?? status
+  );
 }
 
 function projectName(id) {
@@ -120,7 +143,7 @@ function projectMinutes(projectId) {
 
 function renderProjectCard(project, context = "focus") {
   const card = document.createElement("article");
-  card.className = "card";
+  card.className = "card clickable";
   const minutes = projectMinutes(project.id);
   card.innerHTML = `
     <div class="badge-row">
@@ -171,6 +194,11 @@ function renderProjectCard(project, context = "focus") {
   removeBtn.textContent = "Löschen";
   removeBtn.addEventListener("click", () => handleDeleteProject(project.id));
   actions.appendChild(removeBtn);
+
+  card.addEventListener("click", (event) => {
+    if (event.target.closest("button")) return;
+    openProjectLog(project.id);
+  });
 
   return card;
 }
@@ -330,11 +358,56 @@ function openLogModal(projectId) {
   const offsetDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   logDate.value = offsetDate.toISOString().slice(0, 16);
   modal.classList.remove("hidden");
+  setOverlayState("logForm", true);
   logMinutes.focus();
 }
 
 function closeLogModal() {
   modal.classList.add("hidden");
+  setOverlayState("logForm", false);
+}
+
+function renderProjectLog(projectId) {
+  const project = state.projects.find((p) => p.id === projectId);
+  if (!project) return;
+  currentProjectLogId = projectId;
+  projectLogTitle.textContent = project.name;
+  const minutes = projectMinutes(projectId);
+  projectLogMeta.textContent = `${formatMinutes(minutes)} · ${statusLabel(project.status)}`;
+  projectLogList.innerHTML = "";
+
+  const entries = state.logs.filter((log) => log.projectId === projectId);
+  if (!entries.length) {
+    projectLogList.innerHTML = '<p class="muted">Noch keine Updates für dieses Projekt.</p>';
+    return;
+  }
+
+  entries.forEach((log) => {
+    const item = document.createElement("article");
+    item.className = "log-entry";
+    item.innerHTML = `
+      <div class="log-entry-header">
+        <div class="log-entry-meta">
+          <span class="log-minutes">${formatMinutes(log.minutes)}</span>
+          <span class="log-date">${formatDate(log.createdAt)}</span>
+        </div>
+      </div>
+      <p class="log-note">${log.note || "Keine Notiz hinterlegt."}</p>
+    `;
+    projectLogList.appendChild(item);
+  });
+}
+
+function openProjectLog(projectId) {
+  renderProjectLog(projectId);
+  projectLogModal.classList.remove("hidden");
+  setOverlayState("projectLog", true);
+}
+
+function closeProjectLog() {
+  projectLogModal.classList.add("hidden");
+  setOverlayState("projectLog", false);
+  currentProjectLogId = null;
 }
 
 async function handleLogSubmit() {
@@ -420,6 +493,19 @@ function bindEvents() {
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal) closeLogModal();
+  });
+
+  projectLogModal.addEventListener("click", (event) => {
+    if (event.target === projectLogModal) closeProjectLog();
+  });
+
+  closeProjectLogBtn?.addEventListener("click", closeProjectLog);
+  closeProjectLogMobileBtn?.addEventListener("click", closeProjectLog);
+  projectLogAddUpdate?.addEventListener("click", () => {
+    const targetProject = currentProjectLogId ?? state.projects[0]?.id;
+    if (!targetProject) return;
+    closeProjectLog();
+    openLogModal(targetProject);
   });
 }
 

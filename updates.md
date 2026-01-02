@@ -11,3 +11,5 @@
 - Log-Modal nutzt jetzt standardmäßig Datum/Zeit „jetzt“.
 - Updates/Charts reduziert auf Diagramme plus AI-Report-Platzhalter; Seed-Button und Erklärtexte entfernt.
 - Projekt-Kacheln zeigen nur noch den primären Status-Badge (oben links); doppelte Statuslabels entfernt.
+- Projekt-Log einsehbar: Klick auf eine Projekt-Karte öffnet ein mobilfreundliches Log-Fenster (Bottom-Sheet), das alle Updates des Projekts zeigt, inklusive Minuten, Zeitstempel und Notizen. Von dort aus lässt sich direkt ein neues Update starten.
+- Sticky Header minimiert automatisch, sobald ein Update geschrieben oder ein Log angezeigt wird, damit der Eingabebereich auf dem Smartphone nicht überlappt.

@@ -159,6 +159,24 @@
     </div>
   </div>
 
+  <div id="projectLogModal" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="projectLogTitle">
+    <div class="sheet-content">
+      <div class="sheet-header">
+        <div>
+          <p class="eyebrow">Projekt-Log</p>
+          <h3 id="projectLogTitle">Projektname</h3>
+          <p class="muted" id="projectLogMeta">–</p>
+        </div>
+        <div class="sheet-actions">
+          <button class="ghost mobile-only" id="closeProjectLogMobile">Schließen</button>
+          <button class="secondary" id="projectLogAddUpdate">+ Update</button>
+          <button class="ghost icon-only" id="closeProjectLog" aria-label="Log schließen">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body" id="projectLogList" aria-live="polite"></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden" role="status"></div>
 
   <script src="./env.js"></script>

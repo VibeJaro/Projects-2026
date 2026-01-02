@@ -4,6 +4,7 @@ Mission Control 2026 ist ein Supabase-gestütztes Dashboard auf Vercel, um Proje
 
 ## Features (aktuelle Version ohne KI)
 - Kompakter, sticky Header mit Theme-Toggle, Schnellaktionen und Kennzahlen (geloggte Minuten, letztes Update als Datum)
+- Sticky Header minimiert sich automatisch, wenn ein Update- oder Log-Fenster geöffnet ist – verhindert Überlappungen auf dem Smartphone.
 - Tab-Navigation für **Fokus**, **Übersicht** (Queue & Archiv) und **Updates/Charts**
 - Fokus zeigt nur aktive Projekte (max. 3), Übersicht bündelt jetzt **alle** Projekte (aktiv, wartend, pausiert, abgeschlossen)
 - Größere vertikale Abstände zwischen den übergeordneten Übersichtskacheln (Projekt anlegen, Aktiv, Wartend & pausiert, Abgeschlossen) sowie zwischen „Letzte 14 Tage“ und „AI Report“ für bessere Lesbarkeit.
@@ -11,6 +12,7 @@ Mission Control 2026 ist ein Supabase-gestütztes Dashboard auf Vercel, um Proje
 - Gatekeeper: maximal **drei aktive Projekte** gleichzeitig
 - Projekt-CRUD (anlegen, aktivieren/pausieren/abschließen, löschen) mit Supabase-Persistenz
 - Update-Modal mit Quick-Chips (+15/+25/+50 Minuten) und vorgewählter aktueller Zeit
+- Projekt-Log pro Karte abrufbar: Klick auf eine Projekt-Kachel öffnet ein mobilfreundliches Log-Bottom-Sheet mit allen Updates (Minuten, Zeitstempel, Notizen) plus Shortcut für ein neues Update.
 - Balkendiagramm (Minuten pro Projekt) und 14-Tage-Heatmap
 
 ## Schnellstart (lokal)
