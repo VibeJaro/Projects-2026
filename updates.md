@@ -11,3 +11,7 @@
 - Log-Modal nutzt jetzt standardmäßig Datum/Zeit „jetzt“.
 - Updates/Charts reduziert auf Diagramme plus AI-Report-Platzhalter; Seed-Button und Erklärtexte entfernt.
 - Projekt-Kacheln zeigen nur noch den primären Status-Badge (oben links); doppelte Statuslabels entfernt.
+
+## Projekt-Logs & Mobile UX
+- Projektkarten (Fokus & Übersicht) öffnen per Tap/Klick ein Log-Fenster mit allen Einträgen des Projekts. Das Overlay zeigt Minuten, Zeitstempel und Notizen im Vollbild-Scrollbereich, optimiert für Smartphones.
+- Beim Schreiben eines Updates oder beim Betrachten des Logs schrumpft der Sticky Header, damit er auf dem Handy nicht mehr in den Update-/Log-Bereich hineinragt.
