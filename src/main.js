@@ -66,6 +66,11 @@ const projectLogAddUpdate = document.getElementById("projectLogAddUpdate");
 
 let overlayDepth = 0;
 
+function syncHeaderOffset() {
+  const height = topbar?.getBoundingClientRect().height ?? 0;
+  document.documentElement.style.setProperty("--header-offset", `${height}px`);
+}
+
 function formatMinutes(value) {
   return `${value} min`;
 }
@@ -94,6 +99,7 @@ function collapseHeader() {
   overlayDepth += 1;
   document.body.classList.add("header-collapsed");
   topbar?.classList.add("collapsed");
+  syncHeaderOffset();
 }
 
 function releaseHeader() {
@@ -102,6 +108,7 @@ function releaseHeader() {
     document.body.classList.remove("header-collapsed");
     topbar?.classList.remove("collapsed");
   }
+  syncHeaderOffset();
 }
 
 function showToast(message, type = "success") {
@@ -296,6 +303,7 @@ function render() {
   renderQueue();
   renderBarChart();
   renderHeatmap();
+  syncHeaderOffset();
 }
 
 function applyTheme(theme) {
@@ -528,6 +536,8 @@ function initTheme() {
 async function init() {
   initTheme();
   bindEvents();
+  syncHeaderOffset();
+  window.addEventListener("resize", syncHeaderOffset);
   render();
   await refreshState(true);
 }
