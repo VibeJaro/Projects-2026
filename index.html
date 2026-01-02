@@ -10,20 +10,21 @@
 <body>
   <div class="app-shell">
     <header class="topbar sticky">
-      <div>
-        <p class="eyebrow">Mission Control 2026</p>
-        <h1>Fokus & Fortschritt</h1>
+      <div class="brand-stack">
+        <p class="eyebrow brand-title">MISSION CONTROL 2026</p>
+        <div class="mini-stats">
+          <div class="stat-chip slim">
+            <span class="label">Geloggte Minuten</span>
+            <span class="value" id="metricMinutes">0</span>
+          </div>
+          <div class="stat-chip slim">
+            <span class="label">Letztes Update</span>
+            <span class="value small" id="metricLast">–</span>
+          </div>
+        </div>
       </div>
       <div class="top-actions compact">
-        <div class="stat-chip">
-          <span class="label">Geloggte Minuten</span>
-          <span class="value" id="metricMinutes">0</span>
-        </div>
-        <div class="stat-chip">
-          <span class="label">Letztes Update</span>
-          <span class="value" id="metricLast">–</span>
-        </div>
-        <button class="ghost" id="themeToggle" aria-label="Theme umschalten">🌙</button>
+        <button class="ghost icon-only" id="themeToggle" aria-label="Theme umschalten">🌙</button>
         <button class="secondary" id="quickLog">+ Update</button>
         <button class="primary" id="quickProject">+ Projekt</button>
       </div>
@@ -45,7 +46,7 @@
       <section class="view" id="queueView" aria-label="Übersicht und neue Projekte">
         <div class="panel-header">
           <h2>Übersicht</h2>
-          <span class="chip">Wartend, pausiert & archiviert</span>
+          <span class="chip">Aktiv, wartend, pausiert & archiviert</span>
         </div>
         <form id="projectForm" class="panel form-card">
           <div class="field">
@@ -61,6 +62,13 @@
             <button class="primary" type="submit">Projekt anlegen</button>
           </div>
         </form>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Aktiv</h3>
+          </div>
+          <div id="activeList" class="card-grid equal-height"></div>
+        </div>
 
         <div class="panel">
           <div class="panel-header">

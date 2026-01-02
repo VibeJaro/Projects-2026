@@ -33,6 +33,7 @@ const summaryEls = {
 
 const lists = {
   focus: document.getElementById("focusList"),
+  active: document.getElementById("activeList"),
   queue: document.getElementById("queueList"),
   done: document.getElementById("doneList"),
   barChart: document.getElementById("barChart"),
@@ -67,6 +68,11 @@ function formatDate(iso) {
   return `${date} · ${time}`;
 }
 
+function formatDateShort(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function toggleView(key) {
   activeView = key;
   Object.entries(views).forEach(([name, el]) => {
@@ -86,7 +92,7 @@ function renderSummary() {
   const stats = statsSnapshot(state);
   summaryEls.minutes.textContent = stats.totalMinutes;
   summaryEls.last.textContent = stats.lastLog
-    ? `${formatDate(stats.lastLog.createdAt)} · ${projectName(stats.lastLog.projectId)}`
+    ? formatDateShort(stats.lastLog.createdAt)
     : "–";
 }
 
@@ -125,14 +131,6 @@ function renderProjectCard(project, context = "focus") {
     <p class="goal">${project.goal || "Kein Ziel hinterlegt"}</p>
     <div class="goal-row">
       <span class="meta">${formatMinutes(minutes)} geloggt</span>
-      <span class="chip">${
-        {
-          active: "🔥 Fokus",
-          paused: "⏸ Pausiert",
-          queued: "⌛ Wartend",
-          done: "🏁 Fertig",
-        }[project.status] ?? "Status"
-      }</span>
     </div>
     <div class="button-row"></div>
   `;
@@ -190,8 +188,13 @@ function renderFocus() {
 
 function renderQueue() {
   const stats = statsSnapshot(state);
+  lists.active.innerHTML = "";
   lists.queue.innerHTML = "";
   const queuedAndPaused = [...stats.queued, ...stats.paused];
+  stats.active.forEach((project) => lists.active.appendChild(renderProjectCard(project, "queue")));
+  if (!stats.active.length) {
+    lists.active.innerHTML = '<p class="muted">Keine aktiven Projekte.</p>';
+  }
   queuedAndPaused.forEach((project) => lists.queue.appendChild(renderProjectCard(project, "queue")));
   if (!queuedAndPaused.length) {
     lists.queue.innerHTML = '<p class="muted">Keine Projekte in der Übersicht.</p>';
