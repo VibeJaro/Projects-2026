@@ -52,6 +52,7 @@ const projectLogMeta = document.getElementById("projectLogMeta");
 const projectLogList = document.getElementById("projectLogList");
 const toast = document.getElementById("toast");
 const topbar = document.querySelector(".topbar");
+const root = document.documentElement;
 
 const quickLogBtn = document.getElementById("quickLog");
 const openLogFromUpdates = document.getElementById("openLogFromUpdates");
@@ -90,10 +91,17 @@ function toggleView(key) {
   viewButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === key));
 }
 
+function updateModalOffset() {
+  const rect = topbar?.getBoundingClientRect();
+  const offset = rect ? rect.bottom + 12 : 24;
+  root.style.setProperty("--modal-top-offset", `${Math.max(offset, 24)}px`);
+}
+
 function collapseHeader() {
   overlayDepth += 1;
   document.body.classList.add("header-collapsed");
   topbar?.classList.add("collapsed");
+  updateModalOffset();
 }
 
 function releaseHeader() {
@@ -102,6 +110,7 @@ function releaseHeader() {
     document.body.classList.remove("header-collapsed");
     topbar?.classList.remove("collapsed");
   }
+  updateModalOffset();
 }
 
 function showToast(message, type = "success") {
@@ -518,6 +527,8 @@ function bindEvents() {
   projectLogModal.addEventListener("click", (event) => {
     if (event.target === projectLogModal) closeProjectLog();
   });
+
+  window.addEventListener("resize", updateModalOffset);
 }
 
 function initTheme() {
@@ -527,9 +538,11 @@ function initTheme() {
 
 async function init() {
   initTheme();
+  updateModalOffset();
   bindEvents();
   render();
   await refreshState(true);
+  updateModalOffset();
 }
 
 init();
