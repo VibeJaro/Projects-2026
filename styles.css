@@ -109,7 +109,7 @@ h1 { margin: 0 0 8px; font-size: 28px; }
 
 .views { display: grid; gap: 20px; }
 .view { display: none; }
-.view.active { display: block; }
+.view.active { display: grid; gap: 16px; }
 
 .summary-grid {
   display: grid;
