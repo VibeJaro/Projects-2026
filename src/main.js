@@ -176,7 +176,7 @@ function buildAiContextSnapshot() {
 function composeAiInput(context, customPrompt) {
   return `Erstelle ein prägnantes KI-Update in Deutsch für Mission Control 2026.
 - Ziel: Fokus schärfen, Aufgaben schneller abschließen (ohne neue Komplexität), kreative Impulse geben ("hast du daran gedacht?"), nützliche Verknüpfungen vorschlagen und 2-3 kleine Projektideen nennen, die wenig Zusatzaufwand bedeuten.
-- Formatiere in kurzen Bullet-Abschnitten mit klaren Überschriften: Fokus/Quick Wins, Kreativer Twist, Verbindungen, Mini-Projekte, Nächster Schritt heute.
+- Formatiere in klaren Bullet-Abschnitten mit Überschriften: Fokus/Quick Wins, Kreativer Twist, Verbindungen, Mini-Projekte, Nächster Schritt heute. Jede Bullet darf 1-3 Sätze haben, damit die Aktion verständlich wird.
 - Halte dich an konkrete Vorschläge mit Zeitboxen oder klaren Aktionen. Keine langen Erklärungen, keine Entschuldigungen.
 
 Custom Prompt: ${customPrompt || "— (keine Zusatzwünsche)"}
@@ -200,6 +200,59 @@ function extractAiText(responseJson) {
     return responseJson.choices[0].message.content;
   }
   return "";
+}
+
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function applyInlineFormatting(text) {
+  let formatted = text;
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  formatted = formatted.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  return formatted;
+}
+
+function markdownToHtml(markdown) {
+  const escaped = escapeHtml(markdown);
+  const lines = escaped.split(/\r?\n/);
+  const html = [];
+  let inList = false;
+
+  const closeList = () => {
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const bullet = line.match(/^[-*+]\s+(.*)/);
+
+    if (bullet) {
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${applyInlineFormatting(bullet[1].trim())}</li>`);
+      continue;
+    }
+
+    closeList();
+
+    if (!line) {
+      continue;
+    }
+
+    html.push(`<p>${applyInlineFormatting(line)}</p>`);
+  }
+
+  closeList();
+  return html.join("\n");
 }
 
 async function requestAiUpdate() {
@@ -249,7 +302,7 @@ async function requestAiUpdate() {
       throw new Error("Keine KI-Antwort erhalten.");
     }
 
-    aiOutput.textContent = text.trim();
+    aiOutput.innerHTML = markdownToHtml(text.trim());
     aiStatus.textContent = "Bereit";
   } catch (err) {
     aiStatus.textContent = "Fehler";
