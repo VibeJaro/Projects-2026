@@ -16,3 +16,8 @@
 - Projektkarten (Fokus & Übersicht) öffnen per Tap/Klick ein Log-Fenster mit allen Einträgen des Projekts. Das Overlay zeigt Minuten, Zeitstempel und Notizen im Vollbild-Scrollbereich, optimiert für Smartphones.
 - Beim Schreiben eines Updates oder beim Betrachten des Logs schrumpft der Sticky Header, damit er auf dem Handy nicht mehr in den Update-/Log-Bereich hineinragt.
 - Popups starten jetzt unterhalb des Sticky Headers, damit keine Inhalte mehr dahinter verschwinden – insbesondere auf Smartphones.
+
+## KI-Fokus-Update (GPT-5.2)
+- Neues Panel im Tab „Updates/Charts“ mit Button „AI-Update abrufen“.
+- Schickt gesamten Kontext (Projekte, Logs, Settings, Kennzahlen) plus optionalen Custom Prompt an GPT-5.2 und liefert kompakte Fokus-Vorschläge (Speed, Kreativität, Verbindungen, leichte Zusatzideen).
+- Konfiguration via `OPENAI_API_KEY` (optional `OPENAI_API_BASE`) in `env.js`/Env Vars; Fallback-Statusmeldungen bei fehlendem Key oder API-Fehlern.

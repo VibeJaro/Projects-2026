@@ -13,6 +13,7 @@ Mission Control 2026 ist ein Supabase-gestütztes Dashboard auf Vercel, um Proje
 - Gatekeeper: maximal **drei aktive Projekte** gleichzeitig
 - Projekt-CRUD (anlegen, aktivieren/pausieren/abschließen, löschen) mit Supabase-Persistenz
 - Update-Modal mit Quick-Chips (+15/+25/+50 Minuten) und vorgewählter aktueller Zeit
+- KI-Fokus-Update (GPT-5.2): Button im Tab „Updates/Charts“ sendet Projekte, Logs, Settings und optionalen Custom Prompt an GPT-5.2 und liefert ein kurzes, umsetzbares Fokus-Update.
 - Balkendiagramm (Minuten pro Projekt) und 14-Tage-Heatmap
 
 ## Schnellstart (lokal)
@@ -20,6 +21,7 @@ Mission Control 2026 ist ein Supabase-gestütztes Dashboard auf Vercel, um Proje
 2. Supabase-Keys setzen:
    - Entweder Umgebungsvariablen `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY` setzen (werden via `npm run prepare-env` in `env.js` geschrieben).
    - Oder `env.example.js` nach `env.js` kopieren und URL/Anon-Key direkt eintragen (Datei ist .gitignored).
+   - Optional für das KI-Feature: `OPENAI_API_KEY` (und bei Bedarf `OPENAI_API_BASE`, Standard: `https://api.openai.com/v1`) setzen. Der Key landet clientseitig in `env.js`; verwende ihn nur in einem sicheren Umfeld.
 3. Tabellen & Policies anlegen: SQL aus `instructions.md` im Supabase SQL Editor ausführen und RLS einschalten.
 4. Dev-Server starten (schreibt `env.js` automatisch):
    ```bash

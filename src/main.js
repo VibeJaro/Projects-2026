@@ -15,6 +15,7 @@ import {
   saveThemeSetting,
   updateProjectStatusRemote,
 } from "./persistence.js";
+import { readEnv } from "./env.js";
 
 let state = getDefaultState();
 let activeView = "focus";
@@ -53,6 +54,10 @@ const projectLogList = document.getElementById("projectLogList");
 const toast = document.getElementById("toast");
 const topbar = document.querySelector(".topbar");
 const root = document.documentElement;
+const aiCustomPrompt = document.getElementById("aiCustomPrompt");
+const aiUpdateBtn = document.getElementById("aiUpdateBtn");
+const aiOutput = document.getElementById("aiOutput");
+const aiStatus = document.getElementById("aiStatus");
 
 const quickLogBtn = document.getElementById("quickLog");
 const openLogFromUpdates = document.getElementById("openLogFromUpdates");
@@ -66,6 +71,8 @@ const closeProjectLogBtn = document.getElementById("closeProjectLog");
 const projectLogAddUpdate = document.getElementById("projectLogAddUpdate");
 
 let overlayDepth = 0;
+const OPENAI_API_KEY = readEnv("OPENAI_API_KEY");
+const OPENAI_API_BASE = readEnv("OPENAI_API_BASE") ?? "https://api.openai.com/v1";
 
 function formatMinutes(value) {
   return `${value} min`;
@@ -118,6 +125,12 @@ function showToast(message, type = "success") {
   toast.classList.remove("hidden", "success", "error");
   toast.classList.add(type);
   setTimeout(() => toast.classList.add("hidden"), 2500);
+}
+
+function setAiStatus(message, isError = false) {
+  if (!aiStatus) return;
+  aiStatus.textContent = message;
+  aiStatus.classList.toggle("error", isError);
 }
 
 function renderSummary() {
@@ -305,6 +318,112 @@ function render() {
   renderQueue();
   renderBarChart();
   renderHeatmap();
+}
+
+const aiSystemPrompt = `
+Du bist ein extrem fokussierter Missions-Koordinator. Liefere ein kurzes, klar gegliedertes KI-Update auf Deutsch:
+- Priorisiere schnelle Umsetzung: konkrete Mini-Schritte, nichts Kompliziertes.
+- Mach Vorschläge, wie Tasks schneller fertig werden (Abkürzungen, Defaults, Automatisierung).
+- Denk kreativ: „Hast du schon daran gedacht …?“
+- Verbinde sinnvolle Dinge (Projekte/Logs), wenn dadurch Tempo oder Qualität steigt.
+- Ergänze 1-2 leichtgewichtige Projektideen mit geringem Zusatzaufwand.
+Antworte kompakt mit maximal 6 Bulletpoints.`;
+
+function buildAiContextPayload() {
+  const stats = statsSnapshot(state);
+  return JSON.stringify(
+    {
+      settings: state.settings,
+      totals: {
+        totalMinutes: stats.totalMinutes,
+        activeCount: stats.active.length,
+        queuedCount: stats.queued.length,
+        pausedCount: stats.paused.length,
+        doneCount: stats.done.length,
+        lastLog: stats.lastLog,
+      },
+      projects: state.projects,
+      logs: state.logs,
+    },
+    null,
+    2
+  );
+}
+
+function makeAiUserPrompt(customPrompt) {
+  const custom = customPrompt?.trim() ? customPrompt.trim() : "Kein Custom Prompt angegeben.";
+  return [
+    "Custom Prompt:",
+    custom,
+    "",
+    "Kontext (JSON):",
+    buildAiContextPayload(),
+    "",
+    "Aufgabe: Erstelle das KI-Fokus-Update wie beschrieben. Nutze den kompletten Kontext und den Custom Prompt. Schlanke Bullets, keine Floskeln.",
+  ].join("\n");
+}
+
+function extractAiText(response) {
+  if (!response) return null;
+  if (response.output_text) return response.output_text;
+  const first = Array.isArray(response.output) ? response.output[0] : null;
+  if (first?.content?.[0]?.text) return first.content[0].text;
+  if (typeof response.text === "string") return response.text;
+  return null;
+}
+
+async function requestAiUpdate() {
+  if (!aiOutput || !aiUpdateBtn) return;
+  if (!OPENAI_API_KEY) {
+    setAiStatus("OPENAI_API_KEY fehlt (env.js)", true);
+    showToast("OPENAI_API_KEY fehlt. Bitte in env.js setzen.", "error");
+    return;
+  }
+
+  try {
+    aiUpdateBtn.disabled = true;
+    aiOutput.classList.add("loading");
+    aiOutput.textContent = "GPT-5.2 sammelt Kontext und denkt ...";
+    setAiStatus("Sende Kontext an GPT-5.2 ...");
+
+    const payload = {
+      model: "gpt-5.2",
+      input: [
+        { role: "system", content: aiSystemPrompt },
+        { role: "user", content: makeAiUserPrompt(aiCustomPrompt?.value) },
+      ],
+      reasoning: { effort: "none" },
+      text: { verbosity: "medium" },
+    };
+
+    const response = await fetch(`${OPENAI_API_BASE}/responses`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Fehler vom AI-Endpoint: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    const text = extractAiText(data) ?? "Kein Text erhalten.";
+    aiOutput.textContent = text;
+    setAiStatus("Fertig");
+    showToast("AI-Update geladen", "success");
+  } catch (err) {
+    console.error(err);
+    aiOutput.textContent = "Das KI-Update konnte nicht geladen werden.";
+    setAiStatus(err.message ?? "Unbekannter Fehler", true);
+    showToast(err.message ?? "AI-Fehler", "error");
+  } finally {
+    aiUpdateBtn.disabled = false;
+    aiOutput.classList.remove("loading");
+  }
 }
 
 function applyTheme(theme) {
@@ -529,6 +648,10 @@ function bindEvents() {
   });
 
   window.addEventListener("resize", updateModalOffset);
+
+  aiUpdateBtn?.addEventListener("click", () => {
+    requestAiUpdate();
+  });
 }
 
 function initTheme() {

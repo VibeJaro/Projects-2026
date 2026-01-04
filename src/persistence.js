@@ -1,18 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getDefaultState } from "./state.js";
-
-const readEnv = (key) => {
-  if (typeof window !== "undefined") {
-    if (window.ENV?.[key]) return window.ENV[key];
-    if (window[key]) return window[key];
-    const meta = document.querySelector(`meta[name="${key}"]`);
-    if (meta?.content) return meta.content;
-  }
-  if (typeof globalThis !== "undefined" && globalThis.process?.env?.[key]) {
-    return globalThis.process.env[key];
-  }
-  return null;
-};
+import { readEnv } from "./env.js";
 
 const SUPABASE_URL = readEnv("NEXT_PUBLIC_SUPABASE_URL");
 const SUPABASE_ANON_KEY = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");

@@ -111,10 +111,23 @@
 
         <div class="panel ai-placeholder">
           <div class="panel-header">
-            <h3>AI Report</h3>
-            <span class="chip">Platzhalter</span>
+            <h3>AI Fokus-Update</h3>
+            <span class="chip">GPT-5.2</span>
           </div>
-          <p class="muted">Hier entsteht der automatische Report, sobald die KI-Anbindung bereit ist.</p>
+          <div class="ai-grid">
+            <div class="ai-controls">
+              <p class="muted small">Erhalte ein kurzes KI-Update, das dir hilft, schneller abzuschließen, kreativer zu werden und Verbindungen zu sehen. Kontext: alle Projekte & Logs werden automatisch mitgeschickt.</p>
+              <label class="small" for="aiCustomPrompt">Custom Prompt (optional)</label>
+              <textarea id="aiCustomPrompt" rows="3" placeholder="z.B. Bitte fokussiere auf Deadlines diese Woche oder erwähne offene Blocker."></textarea>
+              <div class="ai-actions">
+                <span class="ai-status muted small" id="aiStatus">Bereit</span>
+                <button class="primary" id="aiUpdateBtn" type="button">AI-Update abrufen</button>
+              </div>
+            </div>
+            <div class="ai-output" id="aiOutput">
+              <p class="muted">Noch kein KI-Update. Klicke auf „AI-Update abrufen“, um konkrete Fokus-Hinweise zu erhalten.</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
