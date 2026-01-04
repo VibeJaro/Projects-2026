@@ -111,10 +111,30 @@
 
         <div class="panel ai-placeholder">
           <div class="panel-header">
-            <h3>AI Report</h3>
-            <span class="chip">Platzhalter</span>
+            <div>
+              <p class="eyebrow">GPT-5.2 Fokus-Booster</p>
+              <h3>KI-Update abrufen</h3>
+              <p class="muted small">Klarer Fokus, kreative Ideen und smarte Verknüpfungen – aus allen Projekten & Logs.</p>
+            </div>
+            <span class="chip" id="aiModelLabel">GPT-5.2</span>
           </div>
-          <p class="muted">Hier entsteht der automatische Report, sobald die KI-Anbindung bereit ist.</p>
+          <div class="ai-grid">
+            <div class="ai-controls">
+              <label for="aiCustomPrompt">Custom Prompt (optional)</label>
+              <textarea id="aiCustomPrompt" rows="3" placeholder="z.B. Bitte priorisiere Kurzstrecken-Aufgaben oder nenne eine schnelle Automatisierungsidee."></textarea>
+              <div class="ai-actions">
+                <button class="primary" id="aiGenerate">KI-Update</button>
+                <span class="muted small" id="aiStatus">Bereit</span>
+              </div>
+              <div class="ai-hint muted small">
+                Das Modell erhält vollständigen Kontext (Projekte, Logs, Heatmap) plus Custom Prompt für schnelle, machbare Vorschläge.
+              </div>
+              <div class="ai-alert hidden" id="aiKeyWarning">Fehlender OPENAI_API_KEY. Lege ihn in env.js oder als Environment Variable an.</div>
+            </div>
+            <div class="ai-output" id="aiOutput" aria-live="polite">
+              <p class="muted">Noch kein KI-Update. Klicke auf „KI-Update“, um fokussierte Vorschläge zu erhalten.</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
