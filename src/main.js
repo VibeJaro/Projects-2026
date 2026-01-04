@@ -18,6 +18,8 @@ import {
 
 let state = getDefaultState();
 let activeView = "focus";
+const AI_MODEL = "gpt-5.2";
+const MAX_LOGS_FOR_AI = 60;
 
 const viewButtons = document.querySelectorAll("[data-view]");
 const views = {
@@ -64,8 +66,33 @@ const closeModalBtn = document.getElementById("closeModal");
 const cancelLogBtn = document.getElementById("cancelLog");
 const closeProjectLogBtn = document.getElementById("closeProjectLog");
 const projectLogAddUpdate = document.getElementById("projectLogAddUpdate");
+const aiGenerateBtn = document.getElementById("aiGenerate");
+const aiOutput = document.getElementById("aiOutput");
+const aiStatus = document.getElementById("aiStatus");
+const aiCustomPrompt = document.getElementById("aiCustomPrompt");
+const aiModelLabel = document.getElementById("aiModelLabel");
+const aiKeyWarning = document.getElementById("aiKeyWarning");
 
 let overlayDepth = 0;
+let aiBusy = false;
+
+const readEnv = (key) => {
+  if (typeof window !== "undefined") {
+    if (window.ENV?.[key]) return window.ENV[key];
+    if (window[key]) return window[key];
+    const meta = document.querySelector(`meta[name="${key}"]`);
+    if (meta?.content) return meta.content;
+  }
+  if (typeof globalThis !== "undefined" && globalThis.process?.env?.[key]) {
+    return globalThis.process.env[key];
+  }
+  return null;
+};
+
+const getAiApiKey = () =>
+  readEnv("OPENAI_API_KEY") ||
+  readEnv("NEXT_PUBLIC_OPENAI_API_KEY") ||
+  readEnv("AI_API_KEY");
 
 function formatMinutes(value) {
   return `${value} min`;
@@ -81,6 +108,157 @@ function formatDate(iso) {
 function formatDateShort(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function aiAvailable() {
+  return Boolean(getAiApiKey());
+}
+
+function updateAiAvailability() {
+  const available = aiAvailable();
+  aiModelLabel && (aiModelLabel.textContent = AI_MODEL);
+  if (aiGenerateBtn) {
+    aiGenerateBtn.disabled = !available || aiBusy;
+    aiGenerateBtn.title = available ? "Fokus-Update abrufen" : "OPENAI_API_KEY fehlt";
+  }
+  if (aiKeyWarning) {
+    aiKeyWarning.classList.toggle("hidden", available);
+  }
+  if (!available && aiStatus) {
+    aiStatus.textContent = "Kein API-Key";
+  }
+}
+
+function buildAiContextSnapshot() {
+  const snapshot = statsSnapshot(state);
+  const totalsMap = buildProjectTotals(state);
+  const summarizeProject = (project) => ({
+    id: project.id,
+    name: project.name,
+    status: project.status,
+    goal: project.goal,
+    minutes: totalsMap.get(project.id) ?? 0,
+    updatedAt: project.updatedAt,
+    createdAt: project.createdAt,
+  });
+
+  const latestLogs = state.logs.slice(0, MAX_LOGS_FOR_AI).map((log) => ({
+    id: log.id,
+    projectId: log.projectId,
+    minutes: log.minutes,
+    note: log.note,
+    createdAt: log.createdAt,
+    projectName: projectName(log.projectId),
+  }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    settings: state.settings,
+    stats: {
+      totalMinutes: snapshot.totalMinutes,
+      lastLog: snapshot.lastLog,
+      heatmap: snapshot.heatmap,
+    },
+    projects: {
+      active: snapshot.active.map(summarizeProject),
+      queued: snapshot.queued.map(summarizeProject),
+      paused: snapshot.paused.map(summarizeProject),
+      done: snapshot.done.map(summarizeProject),
+      totals: snapshot.totals.map(summarizeProject),
+    },
+    logs: {
+      count: state.logs.length,
+      sample: latestLogs,
+    },
+  };
+}
+
+function composeAiInput(context, customPrompt) {
+  return `Erstelle ein prägnantes KI-Update in Deutsch für Mission Control 2026.
+- Ziel: Fokus schärfen, Aufgaben schneller abschließen (ohne neue Komplexität), kreative Impulse geben ("hast du daran gedacht?"), nützliche Verknüpfungen vorschlagen und 2-3 kleine Projektideen nennen, die wenig Zusatzaufwand bedeuten.
+- Formatiere in kurzen Bullet-Abschnitten mit klaren Überschriften: Fokus/Quick Wins, Kreativer Twist, Verbindungen, Mini-Projekte, Nächster Schritt heute.
+- Halte dich an konkrete Vorschläge mit Zeitboxen oder klaren Aktionen. Keine langen Erklärungen, keine Entschuldigungen.
+
+Custom Prompt: ${customPrompt || "— (keine Zusatzwünsche)"}
+
+Kontext (alle Projekte, Logs, Heatmap, Settings):
+${JSON.stringify(context, null, 2)}`;
+}
+
+function extractAiText(responseJson) {
+  if (!responseJson) return "";
+  if (typeof responseJson.output_text === "string") return responseJson.output_text;
+  if (Array.isArray(responseJson.output)) {
+    const textContent = responseJson.output
+      .flatMap((item) => item.content ?? [])
+      .map((c) => c.text ?? c)
+      .filter(Boolean)
+      .join("\n");
+    if (textContent) return textContent;
+  }
+  if (responseJson.choices?.[0]?.message?.content) {
+    return responseJson.choices[0].message.content;
+  }
+  return "";
+}
+
+async function requestAiUpdate() {
+  if (aiBusy) return;
+  const apiKey = getAiApiKey();
+  if (!apiKey) {
+    showToast("OPENAI_API_KEY fehlt.", "error");
+    return;
+  }
+  aiBusy = true;
+  updateAiAvailability();
+  aiStatus.textContent = "GPT-5.2 denkt nach...";
+  aiOutput.innerHTML = "<p class='muted'>Kontext wird gesammelt und an GPT-5.2 geschickt...</p>";
+
+  try {
+    const context = buildAiContextSnapshot();
+    const payload = {
+      model: AI_MODEL,
+      input: [
+        {
+          role: "system",
+          content:
+            "Du bist der Fokus-Booster für Mission Control 2026. Du gibst nur konkrete, umsetzbare Bullet-Punkte und machst Dinge einfacher statt komplizierter.",
+        },
+        { role: "user", content: composeAiInput(context, aiCustomPrompt?.value?.trim()) },
+      ],
+      reasoning: { effort: "none" },
+      text: { verbosity: "medium" },
+    };
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message ?? "Unbekannter API-Fehler.");
+    }
+
+    const text = extractAiText(data);
+    if (!text) {
+      throw new Error("Keine KI-Antwort erhalten.");
+    }
+
+    aiOutput.textContent = text.trim();
+    aiStatus.textContent = "Bereit";
+  } catch (err) {
+    aiStatus.textContent = "Fehler";
+    aiOutput.textContent = err.message;
+    showToast(err.message, "error");
+  } finally {
+    aiBusy = false;
+    updateAiAvailability();
+  }
 }
 
 function toggleView(key) {
@@ -529,6 +707,8 @@ function bindEvents() {
   });
 
   window.addEventListener("resize", updateModalOffset);
+
+  aiGenerateBtn?.addEventListener("click", () => requestAiUpdate());
 }
 
 function initTheme() {
@@ -541,6 +721,7 @@ async function init() {
   updateModalOffset();
   bindEvents();
   render();
+  updateAiAvailability();
   await refreshState(true);
   updateModalOffset();
 }
