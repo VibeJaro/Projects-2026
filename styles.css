@@ -264,12 +264,38 @@ textarea { resize: vertical; }
 
 .badge-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .goal-row { display: flex; gap: 8px; align-items: center; justify-content: flex-start; }
+.note-preview {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+}
+.note-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.note-text { margin: 0; line-height: 1.4; }
 
 body.header-collapsed { padding-top: 6px; }
 body.header-collapsed .topbar { position: sticky; top: 6px; opacity: 0.9; }
 body.header-collapsed .mini-stats { display: none; }
 body.header-collapsed .brand-stack { gap: 2px; }
 body.header-collapsed .top-actions { width: 100%; justify-content: flex-end; }
+
+.note-block {
+  background: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+.note-block-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.note-status { color: var(--muted); font-weight: 700; font-size: 13px; }
+.note-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .ai-grid {
   display: grid;

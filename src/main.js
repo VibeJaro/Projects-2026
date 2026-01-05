@@ -14,6 +14,7 @@ import {
   loadState,
   saveThemeSetting,
   updateProjectStatusRemote,
+  updateProjectNoteRemote,
 } from "./persistence.js";
 
 let state = getDefaultState();
@@ -52,6 +53,9 @@ const logDate = document.getElementById("logDate");
 const projectLogTitle = document.getElementById("projectLogTitle");
 const projectLogMeta = document.getElementById("projectLogMeta");
 const projectLogList = document.getElementById("projectLogList");
+const projectNoteInput = document.getElementById("projectNoteInput");
+const projectNoteStatus = document.getElementById("projectNoteStatus");
+const saveProjectNoteBtn = document.getElementById("saveProjectNote");
 const toast = document.getElementById("toast");
 const topbar = document.querySelector(".topbar");
 const root = document.documentElement;
@@ -75,6 +79,7 @@ const aiKeyWarning = document.getElementById("aiKeyWarning");
 
 let overlayDepth = 0;
 let aiBusy = false;
+let noteDirty = false;
 
 const readEnv = (key) => {
   if (typeof window !== "undefined") {
@@ -137,6 +142,7 @@ function buildAiContextSnapshot() {
     name: project.name,
     status: project.status,
     goal: project.goal,
+    note: project.note,
     minutes: totalsMap.get(project.id) ?? 0,
     updatedAt: project.updatedAt,
     createdAt: project.createdAt,
@@ -178,6 +184,7 @@ function composeAiInput(context, customPrompt) {
 - Ziel: Fokus schärfen, Aufgaben schneller abschließen (ohne neue Komplexität), kreative Impulse geben ("hast du daran gedacht?"), nützliche Verknüpfungen vorschlagen und 2-3 kleine Projektideen nennen, die wenig Zusatzaufwand bedeuten.
 - Formatiere in klaren Bullet-Abschnitten mit Überschriften: Fokus/Quick Wins, Kreativer Twist, Verbindungen, Mini-Projekte, Nächster Schritt heute. Jede Bullet darf 1-3 Sätze haben, damit die Aktion verständlich wird.
 - Halte dich an konkrete Vorschläge mit Zeitboxen oder klaren Aktionen. Keine langen Erklärungen, keine Entschuldigungen.
+- Nutze Ziele und Notizzettel pro Projekt als Kontext für Empfehlungen und Querverbindungen.
 
 Custom Prompt: ${customPrompt || "— (keine Zusatzwünsche)"}
 
@@ -381,6 +388,13 @@ function projectMinutes(projectId) {
   return totals.get(projectId) ?? 0;
 }
 
+function previewText(text, fallback = "Kein Notizzettel hinterlegt") {
+  const value = text?.trim();
+  if (!value) return fallback;
+  if (value.length <= 140) return value;
+  return `${value.slice(0, 137)}…`;
+}
+
 function renderProjectCard(project, context = "focus") {
   const card = document.createElement("article");
   card.className = "card";
@@ -396,6 +410,10 @@ function renderProjectCard(project, context = "focus") {
     <p class="goal">${project.goal || "Kein Ziel hinterlegt"}</p>
     <div class="goal-row">
       <span class="meta">${formatMinutes(minutes)} geloggt</span>
+    </div>
+    <div class="note-preview">
+      <p class="note-label">Notizzettel</p>
+      <p class="note-text ${project.note?.trim() ? "" : "muted"}">${previewText(project.note)}</p>
     </div>
     <div class="button-row"></div>
   `;
@@ -623,12 +641,22 @@ function renderProjectLog(projectId) {
   const project = state.projects.find((p) => p.id === projectId);
   if (!project) {
     projectLogModal.dataset.projectId = "";
+    projectNoteInput.value = "";
+    projectNoteInput.disabled = true;
+    projectNoteStatus.textContent = "Kein Projekt geladen";
+    saveProjectNoteBtn.disabled = true;
+    noteDirty = false;
     return;
   }
   projectLogModal.dataset.projectId = projectId;
   projectLogTitle.textContent = project.name;
   const minutes = projectMinutes(projectId);
   projectLogMeta.textContent = `${formatMinutes(minutes)} · ${formatDateShort(project.updatedAt)} aktualisiert`;
+  projectNoteInput.value = project.note ?? "";
+  projectNoteInput.disabled = false;
+  noteDirty = false;
+  saveProjectNoteBtn.disabled = true;
+  projectNoteStatus.textContent = project.note?.trim() ? "Gespeichert" : "Leer – Notizzettel speichern, wenn du ihn ergänzt";
   projectLogList.innerHTML = "";
   const logs = state.logs.filter((log) => log.projectId === projectId);
   if (!logs.length) {
@@ -662,6 +690,28 @@ function closeProjectLog() {
   releaseHeader();
 }
 
+async function saveProjectNote() {
+  if (!noteDirty) return;
+  const projectId = projectLogModal.dataset.projectId;
+  if (!projectId) return;
+  projectNoteStatus.textContent = "Speichere...";
+  saveProjectNoteBtn.disabled = true;
+  const noteText = projectNoteInput.value.trim();
+  const { error } = await updateProjectNoteRemote(projectId, noteText);
+  if (error) {
+    projectNoteStatus.textContent = "Fehler beim Speichern";
+    saveProjectNoteBtn.disabled = false;
+    showToast(error, "error");
+    return;
+  }
+  projectNoteInput.value = noteText;
+  noteDirty = false;
+  projectNoteStatus.textContent = "Gespeichert";
+  showToast("Notizzettel aktualisiert", "success");
+  await refreshState(false);
+  renderProjectLog(projectId);
+}
+
 async function handleLogSubmit() {
   try {
     const minutes = Number(logMinutes.value);
@@ -692,8 +742,9 @@ async function handleProjectSubmit(formData) {
     const { project } = addProject(state, {
       name: formData.get("name"),
       goal: formData.get("goal"),
+      note: formData.get("note"),
     });
-    const { error } = await createProjectRecord({ name: project.name, goal: project.goal });
+    const { error } = await createProjectRecord({ name: project.name, goal: project.goal, note: project.note });
     if (error) throw new Error(error);
     projectForm.reset();
     showToast("Projekt angelegt", "success");
@@ -758,6 +809,13 @@ function bindEvents() {
   projectLogModal.addEventListener("click", (event) => {
     if (event.target === projectLogModal) closeProjectLog();
   });
+
+  projectNoteInput.addEventListener("input", () => {
+    noteDirty = true;
+    projectNoteStatus.textContent = "Änderungen nicht gespeichert";
+    saveProjectNoteBtn.disabled = false;
+  });
+  saveProjectNoteBtn.addEventListener("click", () => saveProjectNote());
 
   window.addEventListener("resize", updateModalOffset);
 

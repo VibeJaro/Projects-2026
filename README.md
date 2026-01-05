@@ -12,6 +12,7 @@ Mission Control 2026 ist ein Supabase-gestütztes Dashboard auf Vercel, um Proje
 - Light/Dark-Theme mit Persistenz in der Supabase-Settings-Tabelle
 - Gatekeeper: maximal **drei aktive Projekte** gleichzeitig
 - Projekt-CRUD (anlegen, aktivieren/pausieren/abschließen, löschen) mit Supabase-Persistenz
+- Notizzettel je Projekt für Ideen/Pläne – editierbar im Log-Overlay und Bestandteil des KI-Updates
 - Update-Modal mit Quick-Chips (+15/+25/+50 Minuten) und vorgewählter aktueller Zeit
 - Balkendiagramm (Minuten pro Projekt) und 14-Tage-Heatmap
 - KI-Fokus-Booster (GPT-5.2): Ein Klick auf „KI-Update“ schickt Projekte, Logs, Heatmap und optionalen Custom Prompt an GPT-5.2 und liefert Quick-Wins, kreative Twists, Verbindungen und Mini-Projektideen.
@@ -34,7 +35,7 @@ Hinweis: Wenn Supabase-Keys fehlen, bleibt die Oberfläche leer und zeigt einen 
 ## KI-Update (GPT-5.2)
 1. `OPENAI_API_KEY` (oder `NEXT_PUBLIC_OPENAI_API_KEY`/`AI_API_KEY`) setzen, damit der Button aktiv wird.
 2. Tab **Updates/Charts** öffnen und im KI-Panel optional einen Custom Prompt hinterlegen.
-3. Auf „KI-Update“ klicken: Alle Projekte, Logs, Heatmap + Custom Prompt werden an GPT-5.2 gesendet. Die Antwort liefert Quick Wins, kreative Twists, sinnvolle Verbindungen und kleine Projektideen mit klaren Actions.
+3. Auf „KI-Update“ klicken: Alle Projekte, Logs, Notizzettel, Heatmap + Custom Prompt werden an GPT-5.2 gesendet. Die Antwort liefert Quick Wins, kreative Twists, sinnvolle Verbindungen und kleine Projektideen mit klaren Actions.
 
 ## Tests
 ```bash

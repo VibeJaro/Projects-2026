@@ -14,6 +14,7 @@ create table projects (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   goal text,
+  note text,
   status text check (status in ('active','paused','queued','done')) default 'queued',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -81,7 +82,7 @@ create policy "open access" on settings for all using (true) with check (true);
    - Schreiben neuer Logs/Projekte direkt in Supabase; Lokalen State als Cache nutzen.
 
 ## Datenmodell (Mapping zum Draft)
-- **projects**: id, name, goal, status (`active|paused|queued|done`), created_at, updated_at
+- **projects**: id, name, goal, note (Notizzettel), status (`active|paused|queued|done`), created_at, updated_at
 - **logs**: id, project_id, minutes, note, created_at
 - **settings**: user_id, theme (`dark|light`)
 - **Logik-Hinweise**: Gatekeeper (max. 3 aktive Projekte), Logs mit Minuten/Notiz, Reports auf Basis der Logs (Heatmap/Balken, KI-Report).

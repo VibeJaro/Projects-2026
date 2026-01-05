@@ -25,6 +25,7 @@ const mapProjectRow = (row) => ({
   id: row.id,
   name: row.name,
   goal: row.goal ?? "",
+  note: row.note ?? "",
   status: row.status,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -49,7 +50,7 @@ const mapSettingsRow = (row) => ({
 const fetchProjects = async () => {
   const { data, error } = await supabase
     .from("projects")
-    .select("id,name,goal,status,created_at,updated_at")
+    .select("id,name,goal,note,status,created_at,updated_at")
     .order("created_at", { ascending: false });
   return { data: data?.map(mapProjectRow) ?? [], error };
 };
@@ -105,14 +106,14 @@ export async function loadState() {
   };
 }
 
-export async function createProjectRecord({ name, goal }) {
+export async function createProjectRecord({ name, goal, note }) {
   if (!supabase) {
     return { error: "Supabase ist nicht konfiguriert." };
   }
   const { data, error } = await supabase
     .from("projects")
-    .insert({ name, goal })
-    .select("id,name,goal,status,created_at,updated_at")
+    .insert({ name, goal, note })
+    .select("id,name,goal,note,status,created_at,updated_at")
     .single();
   if (error) return { error: error.message };
   return { project: mapProjectRow(data) };
@@ -141,6 +142,16 @@ const touchProjectTimestamp = async (projectId, updatedAt) => {
   const { error } = await supabase.from("projects").update({ updated_at: updatedAt }).eq("id", projectId);
   return error?.message;
 };
+
+export async function updateProjectNoteRemote(projectId, note) {
+  if (!supabase) {
+    return { error: "Supabase ist nicht konfiguriert." };
+  }
+  const updatedAt = new Date().toISOString();
+  const { error } = await supabase.from("projects").update({ note, updated_at: updatedAt }).eq("id", projectId);
+  if (error) return { error: error.message };
+  return { updatedAt };
+}
 
 export async function createLogRecord({ projectId, minutes, note, createdAt }) {
   if (!supabase) {

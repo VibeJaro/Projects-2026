@@ -29,6 +29,11 @@ test('Gatekeeper lässt maximal drei aktive Projekte zu', () => {
   assert.equal(countActiveProjects(attempt.state), MAX_ACTIVE_PROJECTS);
 });
 
+test('Projekt-Notizzettel wird gespeichert und getrimmt', () => {
+  const { project } = addProject(getDefaultState(), { name: 'Test', note: '  Idee  ' });
+  assert.equal(project.note, 'Idee');
+});
+
 test('Logs erhöhen Fortschrittsminuten und aktualisieren den Zeitstempel', () => {
   let state = getDefaultState();
   const { state: withProject, project } = addProject(state, { name: 'Testprojekt', goal: 'Goal' });

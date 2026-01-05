@@ -57,6 +57,11 @@
             <label for="projectGoal">Ziel</label>
             <input id="projectGoal" name="goal" placeholder="Was willst du erreichen?" />
           </div>
+          <div class="field">
+            <label for="projectNote">Notizzettel</label>
+            <textarea id="projectNote" name="note" rows="3" placeholder="Ideen, Links, Brain-Dumps für dieses Projekt."></textarea>
+            <p class="muted small">Wird mit dem Projekt gespeichert und ins KI-Update gegeben.</p>
+          </div>
           <div class="form-actions">
             <div class="muted small">Standardstatus: Queue</div>
             <button class="primary" type="submit">Projekt anlegen</button>
@@ -190,6 +195,20 @@
         <div class="modal-actions">
           <button class="secondary" id="projectLogAddUpdate">+ Update</button>
           <button class="ghost" id="closeProjectLog" aria-label="Log schließen">✕</button>
+        </div>
+      </div>
+      <div class="note-block">
+        <div class="note-block-header">
+          <div>
+            <p class="eyebrow">Notizzettel</p>
+            <p class="muted small">Sammle Ideen oder Planungsdetails für dieses Projekt. Fließt ins KI-Update ein.</p>
+          </div>
+          <span class="note-status" id="projectNoteStatus">Gespeichert</span>
+        </div>
+        <textarea id="projectNoteInput" rows="4" placeholder="Alternative Ideen, Planungsdetails, schnelle Gedanken..."></textarea>
+        <div class="note-actions">
+          <button class="secondary" id="saveProjectNote">Notizzettel speichern</button>
+          <span class="muted small">Änderungen gelten sofort in Karten & KI-Updates.</span>
         </div>
       </div>
       <div id="projectLogList" class="log-list"></div>
