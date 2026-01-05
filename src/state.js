@@ -23,15 +23,18 @@ export const cloneState = (state) => ({
   settings: { ...state.settings },
 });
 
-export function addProject(state, { name, goal = "" }) {
+export function addProject(state, { name, goal = "", note = "" }) {
   if (!name?.trim()) {
     throw new Error("Projektname darf nicht leer sein.");
   }
   const nextState = cloneState(state);
+  const goalText = goal?.trim?.() ?? "";
+  const noteText = note?.trim?.() ?? "";
   const project = {
     id: createId(),
     name: name.trim(),
-    goal: goal.trim(),
+    goal: goalText,
+    note: noteText,
     status: "queued",
     createdAt: nowIso(),
     updatedAt: nowIso(),

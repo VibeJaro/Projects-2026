@@ -21,3 +21,8 @@
 - AI-Panel ersetzt den Placeholder: Button „KI-Update“ sendet alle Projekte, Logs, Heatmap plus Custom Prompt an GPT-5.2 und liefert klare Bullet-Vorschläge für Quick Wins, kreative Twists, Verknüpfungen und Mini-Projektideen.
 - Statushinweis und Warnung bei fehlendem `OPENAI_API_KEY`; env.example + write-env.js schreiben den Key nach `env.js`.
 - Ausgabe rendert Markdown (Bullets, Fett/Kursiv) und Prompt fordert nun ausführlichere, gut lesbare Bullets (1–3 Sätze).
+
+## Notizzettel pro Projekt
+- Projekt-Formular enthält ein Notizzettel-Feld für Ideen/Pläne; die Karten zeigen eine Vorschau.
+- Im Projekt-Log-Overlay kann der Notizzettel bearbeitet und gespeichert werden; Änderungen landen in Supabase.
+- KI-Updates erhalten den Notizzettel-Kontext, damit Vorschläge direkt zu den Planungsnotizen passen.
